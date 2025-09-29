@@ -3,21 +3,32 @@ import { useState, useEffect } from 'react'
 export type Route = '/' | '/dashboard' | '/pricing' | '/login'
 
 export function useRouter() {
-  const [currentRoute, setCurrentRoute] = useState<Route>('/')
+  const [currentRoute, setCurrentRoute] = useState<Route>(() => {
+    // Initialize with current hash or default to '/'
+    return (window.location.hash.slice(1) || '/') as Route
+  })
 
   useEffect(() => {
     const handlePopState = () => {
       setCurrentRoute((window.location.hash.slice(1) || '/') as Route)
     }
     
-    window.addEventListener('popstate', handlePopState)
-    handlePopState() // Set initial route
+    const handleHashChange = () => {
+      setCurrentRoute((window.location.hash.slice(1) || '/') as Route)
+    }
     
-    return () => window.removeEventListener('popstate', handlePopState)
+    window.addEventListener('popstate', handlePopState)
+    window.addEventListener('hashchange', handleHashChange)
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('hashchange', handleHashChange)
+    }
   }, [])
 
   const navigate = (route: Route) => {
-    window.history.pushState({}, '', `#${route}`)
+    const newHash = route === '/' ? '' : route
+    window.location.hash = newHash
     setCurrentRoute(route)
   }
 
