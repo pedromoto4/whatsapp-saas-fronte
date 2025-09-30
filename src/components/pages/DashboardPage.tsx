@@ -49,8 +49,8 @@ export default function DashboardPage() {
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
 
-  // Backend API URL - change this to match your backend
-  const API_BASE_URL = 'https://your-backend-url.railway.app/api/v1'
+  // Backend API URL - change this to match your Railway backend URL
+  const API_BASE_URL = 'https://your-backend-url.railway.app/api'
 
   // Function to get auth token
   const getAuthToken = async () => {
@@ -115,11 +115,13 @@ export default function DashboardPage() {
     
     const endpoints = [
       { path: '/health', method: 'GET' },
-      { path: '/protected', method: 'GET' },
+      { path: '/me', method: 'GET' },
+      { path: '/contacts', method: 'GET' },
+      { path: '/contacts', method: 'POST', data: { name: 'Test Contact', phone: '+5511999999999', email: 'test@example.com' } },
+      { path: '/campaigns', method: 'GET' },
+      { path: '/campaigns', method: 'POST', data: { name: 'Test Campaign', message: 'Hello from dashboard test' } },
       { path: '/messages', method: 'GET' },
-      { path: '/messages', method: 'POST', data: { content: 'Test message', recipient: 'test@example.com' } },
-      { path: '/products', method: 'GET' },
-      { path: '/products', method: 'POST', data: { name: 'Test Product', price: 99.99, description: 'Test Description' } },
+      { path: '/messages', method: 'POST', data: { content: 'Test message from dashboard', contact_id: 1 } },
     ]
 
     for (const endpoint of endpoints) {
@@ -319,16 +321,16 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">GET /protected</p>
-                      <p className="text-sm text-muted-foreground">Auth verification</p>
+                      <p className="font-medium">GET /me</p>
+                      <p className="text-sm text-muted-foreground">Get current user</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/protected'])}
+                      {getStatusIcon(apiTestResults['/me'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/protected', 'GET')}
-                        disabled={apiTestResults['/protected'] === 'pending'}
+                        onClick={() => testEndpoint('/me', 'GET')}
+                        disabled={apiTestResults['/me'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -373,7 +375,7 @@ export default function DashboardPage() {
                         variant="outline"
                         onClick={() => testEndpoint('/messages', 'POST', { 
                           content: 'Test message from dashboard', 
-                          recipient: 'test@example.com' 
+                          contact_id: 1
                         })}
                         disabled={apiTestResults['/messages-post'] === 'pending'}
                       >
@@ -386,22 +388,22 @@ export default function DashboardPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Products API</CardTitle>
-                  <CardDescription>Product catalog management</CardDescription>
+                  <CardTitle>Contacts API</CardTitle>
+                  <CardDescription>Contact management</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">GET /products</p>
-                      <p className="text-sm text-muted-foreground">List products</p>
+                      <p className="font-medium">GET /contacts</p>
+                      <p className="text-sm text-muted-foreground">List contacts</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/products'])}
+                      {getStatusIcon(apiTestResults['/contacts'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/products', 'GET')}
-                        disabled={apiTestResults['/products'] === 'pending'}
+                        onClick={() => testEndpoint('/contacts', 'GET')}
+                        disabled={apiTestResults['/contacts'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -410,20 +412,68 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">POST /products</p>
-                      <p className="text-sm text-muted-foreground">Create product</p>
+                      <p className="font-medium">POST /contacts</p>
+                      <p className="text-sm text-muted-foreground">Create contact</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/products-post'])}
+                      {getStatusIcon(apiTestResults['/contacts-post'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/products', 'POST', { 
-                          name: 'Test Product', 
-                          price: 99.99, 
-                          description: 'Test product from dashboard' 
+                        onClick={() => testEndpoint('/contacts', 'POST', { 
+                          name: 'Test Contact', 
+                          phone: '+5511999999999',
+                          email: 'test@example.com'
                         })}
-                        disabled={apiTestResults['/products-post'] === 'pending'}
+                        disabled={apiTestResults['/contacts-post'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Campaigns API</CardTitle>
+                  <CardDescription>Campaign management</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /campaigns</p>
+                      <p className="text-sm text-muted-foreground">List campaigns</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/campaigns'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/campaigns', 'GET')}
+                        disabled={apiTestResults['/campaigns'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">POST /campaigns</p>
+                      <p className="text-sm text-muted-foreground">Create campaign</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/campaigns-post'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/campaigns', 'POST', { 
+                          name: 'Test Campaign', 
+                          message: 'Hello from dashboard test',
+                          status: 'draft'
+                        })}
+                        disabled={apiTestResults['/campaigns-post'] === 'pending'}
                       >
                         Test
                       </Button>

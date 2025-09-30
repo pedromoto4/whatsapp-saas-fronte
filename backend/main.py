@@ -15,11 +15,15 @@ from app.routers import contacts, campaigns, messages
 
 load_dotenv()
 
-# Initialize Firebase Admin
-firebase_creds = json.loads(os.getenv("FIREBASE_CREDENTIALS_JSON", "{}"))
-if firebase_creds:
-    cred = credentials.Certificate(firebase_creds)
-    firebase_admin.initialize_app(cred)
+# Initialize Firebase Admin (optional for Railway)
+firebase_creds_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "{}")
+try:
+    firebase_creds = json.loads(firebase_creds_str)
+    if firebase_creds and firebase_creds.get("type") == "service_account":
+        cred = credentials.Certificate(firebase_creds)
+        firebase_admin.initialize_app(cred)
+except (json.JSONDecodeError, ValueError):
+    print("Warning: Firebase credentials not properly configured")
 
 app = FastAPI(
     title="WhatsApp SaaS API",
@@ -50,7 +54,17 @@ async def startup_event():
 @app.get("/")
 async def root():
     """Health check endpoint"""
-    return {"message": "WhatsApp SaaS API is running"}
+    return {"message": "WhatsApp SaaS API is running on Railway"}
+
+@app.get("/health")
+async def health_check():
+    """Detailed health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "WhatsApp SaaS API",
+        "version": "1.0.0",
+        "environment": os.getenv("ENVIRONMENT", "production")
+    }
 
 @app.get("/api/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
@@ -82,4 +96,5 @@ async def get_user(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
