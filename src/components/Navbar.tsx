@@ -1,13 +1,13 @@
 import { Button } from '@/components/ui/button'
 import { useRouter } from '@/hooks/use-router'
-import { useKV } from '@github/spark/hooks'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Navbar() {
   const { navigate } = useRouter()
-  const [isLoggedIn, setIsLoggedIn] = useKV<boolean>('isLoggedIn', false)
+  const { isLoggedIn, logout } = useAuth()
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
   }
 
@@ -18,7 +18,7 @@ export default function Navbar() {
           onClick={() => navigate('/')}
           className="text-2xl font-bold text-primary hover:text-primary/80 transition-colors"
         >
-          EngagePro
+          WhatsApp SaaS
         </button>
         <div className="flex items-center gap-4">
           {!isLoggedIn ? (
@@ -27,7 +27,7 @@ export default function Navbar() {
                 onClick={() => navigate('/pricing')}
                 className="text-foreground hover:text-primary transition-colors"
               >
-                Pricing
+                Preços
               </button>
               <Button 
                 onClick={() => navigate('/login')}

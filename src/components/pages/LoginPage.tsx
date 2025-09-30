@@ -5,49 +5,39 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useRouter } from '@/hooks/use-router'
-import { useKV } from '@github/spark/hooks'
+import { useAuth } from '@/hooks/use-auth'
 import { GoogleLogo } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
   const { navigate } = useRouter()
-  const [, setIsLoggedIn] = useKV<boolean>('isLoggedIn', false)
-  const [, setUserEmail] = useKV<string>('userEmail', '')
+  const { loginWithEmail, loginWithGoogle, register, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
-    // Simulate login process
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    if (email && password) {
-      setIsLoggedIn(true)
-      setUserEmail(email)
-      toast.success('Login successful!')
+    
+    try {
+      if (isRegistering) {
+        await register(email, password)
+      } else {
+        await loginWithEmail(email, password)
+      }
       navigate('/dashboard')
-    } else {
-      toast.error('Please enter both email and password')
+    } catch (error) {
+      // Error is already handled in the useAuth hook
     }
-
-    setIsLoading(false)
   }
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    
-    // Simulate Google OAuth
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    setIsLoggedIn(true)
-    setUserEmail('user@example.com')
-    toast.success('Logged in with Google!')
-    navigate('/dashboard')
-    
-    setIsLoading(false)
+    try {
+      await loginWithGoogle()
+      navigate('/dashboard')
+    } catch (error) {
+      // Error is already handled in the useAuth hook
+    }
   }
 
   return (
@@ -55,10 +45,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Welcome Back
+            {isRegistering ? 'Criar Conta' : 'Bem-vindo'}
           </CardTitle>
           <CardDescription className="text-center">
-            Sign in to your EngagePro account
+            {isRegistering ? 'Crie sua conta WhatsApp SaaS' : 'Entre na sua conta WhatsApp SaaS'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -68,7 +58,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder="Digite seu email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -79,7 +69,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Digite sua password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -88,9 +78,9 @@ export default function LoginPage() {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Processando...' : (isRegistering ? 'Criar Conta' : 'Entrar')}
             </Button>
           </form>
 
@@ -100,7 +90,7 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-card px-2 text-muted-foreground">
-                Or continue with
+                Ou continue com
               </span>
             </div>
           </div>
@@ -109,19 +99,19 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={loading}
           >
             <GoogleLogo className="mr-2 h-4 w-4" />
-            {isLoading ? 'Connecting...' : 'Continue with Google'}
+            {loading ? 'Conectando...' : 'Continuar com Google'}
           </Button>
 
           <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
+            {isRegistering ? 'Já tem conta?' : 'Não tem conta?'}{' '}
             <button 
               className="text-primary hover:underline"
-              onClick={() => toast.info('Registration will be available soon!')}
+              onClick={() => setIsRegistering(!isRegistering)}
             >
-              Sign up
+              {isRegistering ? 'Fazer login' : 'Criar conta'}
             </button>
           </div>
 

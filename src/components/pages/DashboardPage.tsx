@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from '@/hooks/use-router'
-import { useKV } from '@github/spark/hooks'
+import { useAuth } from '@/hooks/use-auth'
 import { 
   ChatCircle, 
   ChartBar, 
@@ -20,27 +20,26 @@ type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
-  const [userEmail] = useKV<string>('userEmail', '')
-  const [, setIsLoggedIn] = useKV<boolean>('isLoggedIn', false)
+  const { user, logout } = useAuth()
   const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
   }
 
   const sidebarItems = [
-    { id: 'overview' as const, label: 'Overview', icon: ChartBar },
-    { id: 'automation' as const, label: 'Automation', icon: ChatCircle },
-    { id: 'catalog' as const, label: 'Product Catalog', icon: ShoppingCart },
-    { id: 'analytics' as const, label: 'Analytics', icon: TrendUp },
+    { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
+    { id: 'automation' as const, label: 'Automação', icon: ChatCircle },
+    { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
+    { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
   ]
 
   const stats = [
-    { label: 'Messages Sent', value: '2,847', change: '+12%', icon: Chat },
-    { label: 'Active Customers', value: '156', change: '+8%', icon: Users },
-    { label: 'Conversion Rate', value: '3.2%', change: '+0.5%', icon: TrendUp },
-    { label: 'Products Listed', value: '24', change: '+3', icon: ShoppingCart },
+    { label: 'Mensagens Enviadas', value: '2,847', change: '+12%', icon: Chat },
+    { label: 'Clientes Ativos', value: '156', change: '+8%', icon: Users },
+    { label: 'Taxa de Conversão', value: '3.2%', change: '+0.5%', icon: TrendUp },
+    { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
 
   const renderContent = () => {
@@ -49,9 +48,9 @@ export default function DashboardPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Welcome back!</h2>
+              <h2 className="text-3xl font-bold mb-2">Bem-vindo de volta!</h2>
               <p className="text-muted-foreground">
-                Here's what's happening with your business today.
+                Aqui está o que está acontecendo com o seu negócio hoje.
               </p>
             </div>
 
@@ -224,9 +223,9 @@ export default function DashboardPage() {
       <nav className="border-b border-border bg-card">
         <div className="px-6 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-primary">EngagePro</h1>
+            <h1 className="text-2xl font-bold text-primary">WhatsApp SaaS</h1>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">{userEmail}</span>
+              <span className="text-sm text-muted-foreground">{user?.email}</span>
               <Button variant="outline" onClick={handleLogout}>
                 Logout
               </Button>
