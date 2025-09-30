@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
+import { toast } from 'sonner'
 import { 
   ChatCircle, 
   ChartBar, 
@@ -13,15 +14,20 @@ import {
   Users,
   TrendUp,
   Chat,
-  ShoppingCart
+  ShoppingCart,
+  Bug,
+  CheckCircle,
+  XCircle
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
   const { user, logout } = useAuth()
   const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
+  const [apiTestResults, setApiTestResults] = useState<{[key: string]: 'pending' | 'success' | 'error'}>({})
+  const [isTestingAll, setIsTestingAll] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -33,6 +39,7 @@ export default function DashboardPage() {
     { id: 'automation' as const, label: 'Automação', icon: ChatCircle },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
     { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
+    { id: 'api-test' as const, label: 'Teste API', icon: Bug },
   ]
 
   const stats = [
@@ -41,6 +48,102 @@ export default function DashboardPage() {
     { label: 'Taxa de Conversão', value: '3.2%', change: '+0.5%', icon: TrendUp },
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
+
+  // Backend API URL - change this to match your backend
+  const API_BASE_URL = 'https://your-backend-url.railway.app/api/v1'
+
+  // Function to get auth token
+  const getAuthToken = async () => {
+    // In a real implementation, you would get the Firebase ID token
+    // For now, we'll simulate it
+    if (user) {
+      // This would be: await user.getIdToken()
+      return 'mock-id-token-for-testing'
+    }
+    return null
+  }
+
+  // Test individual endpoints
+  const testEndpoint = async (endpoint: string, method: string = 'GET', data?: any) => {
+    const fullUrl = `${API_BASE_URL}${endpoint}`
+    setApiTestResults(prev => ({ ...prev, [endpoint]: 'pending' }))
+    
+    try {
+      const token = await getAuthToken()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const options: RequestInit = {
+        method,
+        headers,
+      }
+
+      if (data && method !== 'GET') {
+        options.body = JSON.stringify(data)
+      }
+
+      const response = await fetch(fullUrl, options)
+      
+      if (response.ok) {
+        const result = await response.json()
+        setApiTestResults(prev => ({ ...prev, [endpoint]: 'success' }))
+        toast.success(`${endpoint} funcionando!`, {
+          description: `Status: ${response.status} - ${method}`
+        })
+        console.log(`${endpoint} response:`, result)
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+    } catch (error) {
+      setApiTestResults(prev => ({ ...prev, [endpoint]: 'error' }))
+      toast.error(`Erro em ${endpoint}`, {
+        description: error instanceof Error ? error.message : 'Erro desconhecido'
+      })
+      console.error(`${endpoint} error:`, error)
+    }
+  }
+
+  // Test all endpoints
+  const testAllEndpoints = async () => {
+    setIsTestingAll(true)
+    toast.info('Testando todos os endpoints...')
+    
+    const endpoints = [
+      { path: '/health', method: 'GET' },
+      { path: '/protected', method: 'GET' },
+      { path: '/messages', method: 'GET' },
+      { path: '/messages', method: 'POST', data: { content: 'Test message', recipient: 'test@example.com' } },
+      { path: '/products', method: 'GET' },
+      { path: '/products', method: 'POST', data: { name: 'Test Product', price: 99.99, description: 'Test Description' } },
+    ]
+
+    for (const endpoint of endpoints) {
+      await testEndpoint(endpoint.path, endpoint.method, endpoint.data)
+      // Add small delay between requests
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    
+    setIsTestingAll(false)
+    toast.success('Testes concluídos!')
+  }
+
+  const getStatusIcon = (status: 'pending' | 'success' | 'error' | undefined) => {
+    switch (status) {
+      case 'pending':
+        return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'error':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <div className="h-4 w-4 rounded-full border border-muted-foreground"></div>
+    }
+  }
 
   const renderContent = () => {
     switch (activeSection) {
@@ -140,6 +243,218 @@ export default function DashboardPage() {
                     <TrendUp className="mr-2 h-4 w-4" />
                     View reports
                   </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )
+      
+      case 'api-test':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">API Testing</h2>
+              <p className="text-muted-foreground">
+                Test your backend endpoints to ensure they're working correctly.
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Backend Configuration</CardTitle>
+                <CardDescription>
+                  Current backend URL: <code className="bg-muted px-2 py-1 rounded text-sm">{API_BASE_URL}</code>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={testAllEndpoints}
+                    disabled={isTestingAll}
+                  >
+                    {isTestingAll ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    ) : (
+                      <Bug className="mr-2 h-4 w-4" />
+                    )}
+                    Testar Todos os Endpoints
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setApiTestResults({})
+                      toast.info('Resultados limpos')
+                    }}
+                  >
+                    Limpar Resultados
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Health & Auth</CardTitle>
+                  <CardDescription>Basic connectivity and authentication tests</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /health</p>
+                      <p className="text-sm text-muted-foreground">Server health check</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/health'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/health', 'GET')}
+                        disabled={apiTestResults['/health'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /protected</p>
+                      <p className="text-sm text-muted-foreground">Auth verification</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/protected'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/protected', 'GET')}
+                        disabled={apiTestResults['/protected'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Messages API</CardTitle>
+                  <CardDescription>WhatsApp message management</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /messages</p>
+                      <p className="text-sm text-muted-foreground">List messages</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/messages'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/messages', 'GET')}
+                        disabled={apiTestResults['/messages'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">POST /messages</p>
+                      <p className="text-sm text-muted-foreground">Send message</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/messages-post'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/messages', 'POST', { 
+                          content: 'Test message from dashboard', 
+                          recipient: 'test@example.com' 
+                        })}
+                        disabled={apiTestResults['/messages-post'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Products API</CardTitle>
+                  <CardDescription>Product catalog management</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /products</p>
+                      <p className="text-sm text-muted-foreground">List products</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/products'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/products', 'GET')}
+                        disabled={apiTestResults['/products'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">POST /products</p>
+                      <p className="text-sm text-muted-foreground">Create product</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/products-post'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/products', 'POST', { 
+                          name: 'Test Product', 
+                          price: 99.99, 
+                          description: 'Test product from dashboard' 
+                        })}
+                        disabled={apiTestResults['/products-post'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Test Results</CardTitle>
+                  <CardDescription>Summary of API test results</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {Object.keys(apiTestResults).length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      Nenhum teste executado ainda. Clique nos botões acima para testar os endpoints.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(apiTestResults).map(([endpoint, status]) => (
+                        <div key={endpoint} className="flex items-center justify-between p-2 bg-muted rounded">
+                          <code className="text-sm">{endpoint}</code>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(status)}
+                            <span className="text-sm capitalize">{status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
