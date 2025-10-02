@@ -15,13 +15,22 @@
    ENVIRONMENT=production
    SECRET_KEY=your-super-secure-secret-key-for-production-change-this
    CORS_ORIGINS=https://your-frontend-domain.railway.app
-   PORT=8000
    ```
+
+   **Note:** Do NOT set the PORT variable manually - Railway sets this automatically.
 
 3. **Deploy:**
    - Railway will automatically detect the Dockerfile
    - The `railway.json` file configures the build and start commands
+   - The custom `start.sh` script properly handles Railway's PORT environment variable
    - Deployment should complete in a few minutes
+
+## Port Configuration Fix
+
+This deployment includes a fix for the common Railway PORT error:
+- `start.sh` script properly handles the $PORT environment variable
+- `start.py` provides a Python alternative with proper port handling
+- Both scripts default to port 8000 if PORT is not set
 
 ## Database Configuration
 
@@ -67,13 +76,14 @@ Use the dashboard's "Teste API" section to verify all endpoints are working corr
 
 ## Troubleshooting
 
-1. **Database Connection Issues:**
+1. **Port Issues (FIXED):**
+   - The custom start scripts properly handle Railway's PORT variable
+   - Railway automatically sets the PORT environment variable
+   - Do not manually set PORT in environment variables
+
+2. **Database Connection Issues:**
    - Verify the DATABASE_URL is exactly as provided
    - Check Railway logs for connection errors
-
-2. **Port Issues:**
-   - Railway automatically sets the PORT environment variable
-   - The app is configured to use Railway's dynamic port
 
 3. **CORS Issues:**
    - Update CORS_ORIGINS to include your frontend domain
