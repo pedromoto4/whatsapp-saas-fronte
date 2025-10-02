@@ -6,10 +6,20 @@ import PricingPage from '@/components/pages/PricingPage'
 import DashboardPage from '@/components/pages/DashboardPage'
 import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
+import { useEffect } from 'react'
 
 function App() {
-  const { currentRoute } = useRouter()
+  const { currentRoute, navigate } = useRouter()
   const { isLoggedIn, loading } = useAuth()
+
+  // Auto-redirect logged in users from home/login to dashboard
+  useEffect(() => {
+    if (!loading && isLoggedIn) {
+      if (currentRoute === '/' || currentRoute === '/login') {
+        navigate('/dashboard')
+      }
+    }
+  }, [loading, isLoggedIn, currentRoute, navigate])
 
   // Show loading spinner while checking auth state
   if (loading) {
