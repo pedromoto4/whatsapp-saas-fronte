@@ -50,7 +50,7 @@ export default function DashboardPage() {
   ]
 
   // Backend API URL - change this to match your Railway backend URL
-  const API_BASE_URL = 'https://your-backend-url.railway.app/api'
+  const API_BASE_URL = 'https://whatsapp-saas-fronte-production.up.railway.app'
 
   // Function to get auth token
   const getAuthToken = async () => {
