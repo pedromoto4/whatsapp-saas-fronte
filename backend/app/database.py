@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-#DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/whatsapp_saas")
+#DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/whatsapp_saas") exemplo
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:IsVXKeevkstNtmdqaULaXyCVjrgzRrkq@ballast.proxy.rlwy.net:52154/railway")
+
+
+
+
 # Convert psycopg2 URL to asyncpg if needed
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
