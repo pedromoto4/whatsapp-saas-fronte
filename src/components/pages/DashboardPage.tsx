@@ -52,7 +52,7 @@ export default function DashboardPage() {
   // Backend API URL - change this to match your Railway backend URL
   const API_BASE_URL = 'https://whatsapp-saas-fronte-production.up.railway.app:8080'
   
-  // 2 Apenas um teste apenas um teste para ver se o commit para o repositorio funciona
+  // 3 Apenas um teste apenas um teste para ver se o commit para o repositorio funciona
   // Function to get auth token
   const getAuthToken = async () => {
     // In a real implementation, you would get the Firebase ID token
