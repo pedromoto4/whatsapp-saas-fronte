@@ -1,0 +1,5 @@
+[variables]
+PORT = "8000"
+
+[start]
+cmd = "python start.py"
