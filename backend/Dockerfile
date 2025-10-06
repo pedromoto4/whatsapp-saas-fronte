@@ -17,3 +17,6 @@ COPY . .
 
 # Make scripts executable
 RUN chmod +x start.py start.sh
+
+# Railway will set PORT, start.py will use it
+CMD ["python", "start.py"]
