@@ -18,8 +18,5 @@ COPY . .
 # Make scripts executable
 RUN chmod +x start.py start.sh
 
-# Expose port (Railway will set PORT environment variable)
-EXPOSE 8000
-
-# Run the application with the Python start script (more reliable than bash)
+# Run the application
 CMD ["python", "start.py"]
