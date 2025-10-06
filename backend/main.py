@@ -15,26 +15,15 @@ from app.routers import contacts, campaigns, messages
 
 load_dotenv()
 
-# Debug: Print environment info
-print("=" * 50)
-print("Starting WhatsApp SaaS API")
-print(f"Environment: {os.getenv('ENVIRONMENT', 'production')}")
-print(f"Database URL configured: {'Yes' if os.getenv('DATABASE_URL') else 'No'}")
-print(f"Port: {os.getenv('PORT', '8000')}")
-print("=" * 50)
-
-# Initialize Firebase Admin (optional for Railway)
+# Initialize Firebase Admin (optional)
 firebase_creds_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "{}")
 try:
     firebase_creds = json.loads(firebase_creds_str)
     if firebase_creds and firebase_creds.get("type") == "service_account":
         cred = credentials.Certificate(firebase_creds)
         firebase_admin.initialize_app(cred)
-        print("Firebase Admin initialized successfully")
-    else:
-        print("Firebase credentials not configured - running without Firebase")
-except (json.JSONDecodeError, ValueError) as e:
-    print(f"Warning: Firebase credentials not properly configured: {e}")
+except (json.JSONDecodeError, ValueError):
+    pass  # Firebase not configured
 
 app = FastAPI(
     title="WhatsApp SaaS API",
@@ -43,26 +32,13 @@ app = FastAPI(
 )
 
 # CORS Configuration
-cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
-
-# If CORS_ORIGINS is "*", allow all origins
-if cors_origins_env == "*":
-    origins = ["*"]
-    allow_credentials = False  # Can't use credentials with wildcard
-else:
-    origins = [origin.strip() for origin in cors_origins_env.split(",")]
-    # Always add Vercel domain if not already included
-    vercel_domain = "https://whatsapp-saas-fronte.vercel.app"
-    if vercel_domain not in origins:
-        origins.append(vercel_domain)
-    allow_credentials = True
-
-print(f"CORS Origins configured: {origins}")
+cors_origins = os.getenv("CORS_ORIGINS", "*")
+origins = ["*"] if cors_origins == "*" else [o.strip() for o in cors_origins.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=allow_credentials,
+    allow_credentials=False if origins == ["*"] else True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -77,11 +53,8 @@ async def startup_event():
     """Create database tables on startup"""
     try:
         await create_tables()
-        print("Database tables created successfully")
-    except Exception as e:
-        print(f"Warning: Could not create database tables: {e}")
-        # Continue running even if DB setup fails
-        pass
+    except Exception:
+        pass  # Continue even if DB setup fails
 
 @app.get("/")
 async def root():
