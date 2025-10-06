@@ -32,20 +32,26 @@ app = FastAPI(
 )
 
 # CORS Configuration
-origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
 
-# Add Vercel domain if not already included
-vercel_domain = "https://whatsapp-saas-fronte.vercel.app"
-if vercel_domain not in origins:
-    origins.append(vercel_domain)
+# If CORS_ORIGINS is "*", allow all origins
+if cors_origins_env == "*":
+    origins = ["*"]
+    allow_credentials = False  # Can't use credentials with wildcard
+else:
+    origins = [origin.strip() for origin in cors_origins_env.split(",")]
+    # Always add Vercel domain if not already included
+    vercel_domain = "https://whatsapp-saas-fronte.vercel.app"
+    if vercel_domain not in origins:
+        origins.append(vercel_domain)
+    allow_credentials = True
 
-# In production, you might want to allow all origins (be careful!)
-# origins = ["*"]
+print(f"CORS Origins configured: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
