@@ -8,6 +8,8 @@ import uvicorn
 if __name__ == "__main__":
     # Get port from environment variable, fallback to 8000
     port = int(os.environ.get("PORT", 8000))
+    print(f"[START] PORT env var: {os.environ.get('PORT', 'NOT SET')}")
+    print(f"[START] Starting server on port: {port}")
     
     # Run uvicorn with proper configuration for Railway
     uvicorn.run(
