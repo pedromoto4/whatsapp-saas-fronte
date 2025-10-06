@@ -15,6 +15,14 @@ from app.routers import contacts, campaigns, messages
 
 load_dotenv()
 
+# Debug: Print environment info
+print("=" * 50)
+print("Starting WhatsApp SaaS API")
+print(f"Environment: {os.getenv('ENVIRONMENT', 'production')}")
+print(f"Database URL configured: {'Yes' if os.getenv('DATABASE_URL') else 'No'}")
+print(f"Port: {os.getenv('PORT', '8000')}")
+print("=" * 50)
+
 # Initialize Firebase Admin (optional for Railway)
 firebase_creds_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "{}")
 try:
@@ -22,8 +30,11 @@ try:
     if firebase_creds and firebase_creds.get("type") == "service_account":
         cred = credentials.Certificate(firebase_creds)
         firebase_admin.initialize_app(cred)
-except (json.JSONDecodeError, ValueError):
-    print("Warning: Firebase credentials not properly configured")
+        print("Firebase Admin initialized successfully")
+    else:
+        print("Firebase credentials not configured - running without Firebase")
+except (json.JSONDecodeError, ValueError) as e:
+    print(f"Warning: Firebase credentials not properly configured: {e}")
 
 app = FastAPI(
     title="WhatsApp SaaS API",
@@ -64,7 +75,13 @@ app.include_router(messages.router)
 @app.on_event("startup")
 async def startup_event():
     """Create database tables on startup"""
-    await create_tables()
+    try:
+        await create_tables()
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Warning: Could not create database tables: {e}")
+        # Continue running even if DB setup fails
+        pass
 
 @app.get("/")
 async def root():
