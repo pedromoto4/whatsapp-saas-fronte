@@ -17,6 +17,3 @@ COPY . .
 
 # Make scripts executable
 RUN chmod +x start.py start.sh
-
-# Run the application
-CMD ["python", "start.py"]
