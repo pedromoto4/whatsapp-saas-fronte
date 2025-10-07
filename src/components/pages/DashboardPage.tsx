@@ -52,6 +52,10 @@ export default function DashboardPage() {
   // Backend API URL - use environment variable or fallback
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
   
+  // Debug: log the API URL
+  console.log('🔧 API_BASE_URL:', API_BASE_URL)
+  console.log('🔧 ENV:', import.meta.env.VITE_API_BASE_URL)
+  
   // Function to get auth token
   const getAuthToken = async () => {
     if (user) {
