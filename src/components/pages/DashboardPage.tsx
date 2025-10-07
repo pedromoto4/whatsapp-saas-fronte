@@ -49,7 +49,7 @@ export default function DashboardPage() {
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
 
-  // Backend API URL - change this to match your Railway backend URL
+  // Backend API URL - always use HTTPS
   const API_BASE_URL = 'https://whatsapp-saas-fronte-production.up.railway.app'
   
   // Function to get auth token
@@ -69,7 +69,12 @@ export default function DashboardPage() {
 
   // Test individual endpoints
   const testEndpoint = async (endpoint: string, method: string = 'GET', data?: any) => {
-    const fullUrl = `${API_BASE_URL}${endpoint}`
+    // Ensure HTTPS is used
+    let fullUrl = `${API_BASE_URL}${endpoint}`
+    if (fullUrl.startsWith('http://')) {
+      fullUrl = fullUrl.replace('http://', 'https://')
+    }
+    
     setApiTestResults(prev => ({ ...prev, [endpoint]: 'pending' }))
     
     try {
