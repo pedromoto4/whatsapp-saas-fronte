@@ -53,13 +53,10 @@ export default function DashboardPage() {
   let baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
   // Force HTTPS even if environment variable is wrong
   if (baseUrl.startsWith('http://')) {
+    console.warn('⚠️ ENV variable has http://, forcing https://')
     baseUrl = baseUrl.replace('http://', 'https://')
   }
   const API_BASE_URL = baseUrl
-  
-  // Debug: log the API URL
-  console.log('🔧 API_BASE_URL:', API_BASE_URL)
-  console.log('🔧 ENV:', import.meta.env.VITE_API_BASE_URL)
   
   // Function to get auth token
   const getAuthToken = async () => {
@@ -78,14 +75,20 @@ export default function DashboardPage() {
 
   // Test individual endpoints
   const testEndpoint = async (endpoint: string, method: string = 'GET', data?: any) => {
-    // Ensure HTTPS is used
+    // Build URL from base and endpoint
     let fullUrl = `${API_BASE_URL}${endpoint}`
+    
+    // Safety check: force HTTPS if somehow http slipped through
     if (fullUrl.startsWith('http://')) {
+      console.warn('⚠️ URL has http://, forcing https://', fullUrl)
       fullUrl = fullUrl.replace('http://', 'https://')
     }
     
-    console.log(`🌐 Testing ${method} ${endpoint}`)
-    console.log(`🔗 Full URL: ${fullUrl}`)
+    console.group(`🌐 ${method} ${endpoint}`)
+    console.log('Base URL:', API_BASE_URL)
+    console.log('Endpoint:', endpoint)
+    console.log('Full URL:', fullUrl)
+    console.log('Has trailing slash:', endpoint.endsWith('/'))
     
     setApiTestResults(prev => ({ ...prev, [endpoint]: 'pending' }))
     
@@ -117,23 +120,30 @@ export default function DashboardPage() {
 
       const response = await fetch(fullUrl, options)
       
+      console.log('Response status:', response.status)
+      console.log('Response URL:', response.url) // This shows final URL after redirects
+      
       if (response.ok) {
         const result = await response.json()
         setApiTestResults(prev => ({ ...prev, [endpoint]: 'success' }))
+        console.log('✅ Success:', result)
+        console.groupEnd()
         toast.success(`${endpoint} funcionando!`, {
           description: `Status: ${response.status} - ${method}`
         })
-        console.log(`${endpoint} response:`, result)
       } else {
         const errorText = await response.text()
+        console.error('❌ Error:', response.status, errorText)
+        console.groupEnd()
         throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`)
       }
     } catch (error) {
+      console.error('❌ Exception:', error)
+      console.groupEnd()
       setApiTestResults(prev => ({ ...prev, [endpoint]: 'error' }))
       toast.error(`Erro em ${endpoint}`, {
         description: error instanceof Error ? error.message : 'Erro desconhecido'
       })
-      console.error(`${endpoint} error:`, error)
     }
   }
 
