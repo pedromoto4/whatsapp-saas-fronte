@@ -49,8 +49,13 @@ export default function DashboardPage() {
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
 
-  // Backend API URL - use environment variable or fallback
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
+  // Backend API URL - use environment variable or fallback, always enforce HTTPS
+  let baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
+  // Force HTTPS even if environment variable is wrong
+  if (baseUrl.startsWith('http://')) {
+    baseUrl = baseUrl.replace('http://', 'https://')
+  }
+  const API_BASE_URL = baseUrl
   
   // Debug: log the API URL
   console.log('🔧 API_BASE_URL:', API_BASE_URL)
