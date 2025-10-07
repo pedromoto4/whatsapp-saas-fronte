@@ -140,12 +140,12 @@ export default function DashboardPage() {
     const endpoints = [
       { path: '/health', method: 'GET' },
       { path: '/api/me', method: 'GET' },
-      { path: '/api/contacts', method: 'GET' },
-      { path: '/api/contacts', method: 'POST', data: { name: 'Test Contact', phone: '+5511999999999', email: 'test@example.com' } },
-      { path: '/api/campaigns', method: 'GET' },
-      { path: '/api/campaigns', method: 'POST', data: { name: 'Test Campaign', message: 'Hello from dashboard test' } },
-      { path: '/api/messages', method: 'GET' },
-      { path: '/api/messages', method: 'POST', data: { content: 'Test message from dashboard', contact_id: 1 } },
+      { path: '/api/contacts/', method: 'GET' },
+      { path: '/api/contacts/', method: 'POST', data: { name: 'Test Contact', phone: '+5511999999999', email: 'test@example.com' } },
+      { path: '/api/campaigns/', method: 'GET' },
+      { path: '/api/campaigns/', method: 'POST', data: { name: 'Test Campaign', message: 'Hello from dashboard test' } },
+      { path: '/api/messages/', method: 'GET' },
+      { path: '/api/messages/', method: 'POST', data: { content: 'Test message from dashboard', contact_id: 1 } },
     ]
 
     for (const endpoint of endpoints) {
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/api/messages', 'GET')}
+                        onClick={() => testEndpoint('/api/messages/', 'GET')}
                         disabled={apiTestResults['/api/messages'] === 'pending'}
                       >
                         Test
@@ -397,7 +397,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/api/messages', 'POST', { 
+                        onClick={() => testEndpoint('/api/messages/', 'POST', { 
                           content: 'Test message from dashboard', 
                           contact_id: 1
                         })}
@@ -426,7 +426,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/api/contacts', 'GET')}
+                        onClick={() => testEndpoint('/api/contacts/', 'GET')}
                         disabled={apiTestResults['/api/contacts'] === 'pending'}
                       >
                         Test
@@ -444,7 +444,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/api/contacts', 'POST', { 
+                        onClick={() => testEndpoint('/api/contacts/', 'POST', { 
                           name: 'Test Contact', 
                           phone: '+5511999999999',
                           email: 'test@example.com'
@@ -474,7 +474,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/api/campaigns', 'GET')}
+                        onClick={() => testEndpoint('/api/campaigns/', 'GET')}
                         disabled={apiTestResults['/api/campaigns'] === 'pending'}
                       >
                         Test
@@ -492,7 +492,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/api/campaigns', 'POST', { 
+                        onClick={() => testEndpoint('/api/campaigns/', 'POST', { 
                           name: 'Test Campaign', 
                           message: 'Hello from dashboard test',
                           status: 'draft'
