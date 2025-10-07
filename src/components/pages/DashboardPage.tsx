@@ -52,14 +52,17 @@ export default function DashboardPage() {
   // Backend API URL - change this to match your Railway backend URL
   const API_BASE_URL = 'https://whatsapp-saas-fronte-production.up.railway.app'
   
-  // 4 Apenas um teste apenas um teste para ver se o commit para o repositorio funciona
   // Function to get auth token
   const getAuthToken = async () => {
-    // In a real implementation, you would get the Firebase ID token
-    // For now, we'll simulate it
     if (user) {
-      // This would be: await user.getIdToken()
-      return 'mock-id-token-for-testing'
+      try {
+        // Get real Firebase ID token
+        const token = await (user as any).getIdToken()
+        return token
+      } catch (error) {
+        console.error('Error getting Firebase token:', error)
+        return null
+      }
     }
     return null
   }
@@ -71,6 +74,13 @@ export default function DashboardPage() {
     
     try {
       const token = await getAuthToken()
+      
+      // Check if endpoint requires auth and user is not logged in
+      const requiresAuth = endpoint.includes('/api/')
+      if (requiresAuth && !token) {
+        throw new Error('Você precisa estar logado para testar este endpoint')
+      }
+      
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       }
@@ -98,7 +108,8 @@ export default function DashboardPage() {
         })
         console.log(`${endpoint} response:`, result)
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`)
       }
     } catch (error) {
       setApiTestResults(prev => ({ ...prev, [endpoint]: 'error' }))
