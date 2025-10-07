@@ -64,11 +64,30 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Detailed health check endpoint"""
+    firebase_configured = False
+    try:
+        # Check if Firebase is initialized
+        firebase_admin.get_app()
+        firebase_configured = True
+    except ValueError:
+        firebase_configured = False
+    
     return {
         "status": "healthy",
         "service": "WhatsApp SaaS API",
         "version": "1.0.0",
-        "environment": os.getenv("ENVIRONMENT", "production")
+        "environment": os.getenv("ENVIRONMENT", "production"),
+        "firebase_configured": firebase_configured,
+        "database_configured": bool(os.getenv("DATABASE_URL"))
+    }
+
+@app.get("/api/test")
+async def test_endpoint():
+    """Test endpoint without authentication"""
+    return {
+        "message": "API is working!",
+        "timestamp": "2025-10-07",
+        "authenticated": False
     }
 
 @app.get("/api/me", response_model=UserResponse)
