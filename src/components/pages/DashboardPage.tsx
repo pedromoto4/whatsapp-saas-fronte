@@ -49,8 +49,8 @@ export default function DashboardPage() {
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
 
-  // Backend API URL - always use HTTPS
-  const API_BASE_URL = 'https://whatsapp-saas-fronte-production.up.railway.app'
+  // Backend API URL - use environment variable or fallback
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
   
   // Function to get auth token
   const getAuthToken = async () => {
