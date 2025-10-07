@@ -8,13 +8,38 @@ import {
   User
 } from 'firebase/auth'
 import { auth, googleProvider } from '@/lib/firebase'
-import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
+
+// Custom hook that persists state to localStorage (works everywhere)
+function useLocalStorageState<T>(key: string, defaultValue: T): [T, (value: T) => void] {
+  const [state, setState] = useState<T>(() => {
+    if (typeof window === 'undefined') return defaultValue
+    try {
+      const item = localStorage.getItem(key)
+      return item ? JSON.parse(item) : defaultValue
+    } catch {
+      return defaultValue
+    }
+  })
+
+  const setValue = (value: T) => {
+    try {
+      setState(value)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(value))
+      }
+    } catch (e) {
+      console.error('Error saving to localStorage:', e)
+    }
+  }
+
+  return [state, setValue]
+}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useKV<boolean>('isLoggedIn', false)
+  const [isLoggedIn, setIsLoggedIn] = useLocalStorageState<boolean>('isLoggedIn', false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
