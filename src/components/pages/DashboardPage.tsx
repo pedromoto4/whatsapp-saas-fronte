@@ -116,13 +116,13 @@ export default function DashboardPage() {
     
     const endpoints = [
       { path: '/health', method: 'GET' },
-      { path: '/me', method: 'GET' },
-      { path: '/contacts', method: 'GET' },
-      { path: '/contacts', method: 'POST', data: { name: 'Test Contact', phone: '+5511999999999', email: 'test@example.com' } },
-      { path: '/campaigns', method: 'GET' },
-      { path: '/campaigns', method: 'POST', data: { name: 'Test Campaign', message: 'Hello from dashboard test' } },
-      { path: '/messages', method: 'GET' },
-      { path: '/messages', method: 'POST', data: { content: 'Test message from dashboard', contact_id: 1 } },
+      { path: '/api/me', method: 'GET' },
+      { path: '/api/contacts', method: 'GET' },
+      { path: '/api/contacts', method: 'POST', data: { name: 'Test Contact', phone: '+5511999999999', email: 'test@example.com' } },
+      { path: '/api/campaigns', method: 'GET' },
+      { path: '/api/campaigns', method: 'POST', data: { name: 'Test Campaign', message: 'Hello from dashboard test' } },
+      { path: '/api/messages', method: 'GET' },
+      { path: '/api/messages', method: 'POST', data: { content: 'Test message from dashboard', contact_id: 1 } },
     ]
 
     for (const endpoint of endpoints) {
@@ -322,16 +322,16 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">GET /me</p>
+                      <p className="font-medium">GET /api/me</p>
                       <p className="text-sm text-muted-foreground">Get current user</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/me'])}
+                      {getStatusIcon(apiTestResults['/api/me'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/me', 'GET')}
-                        disabled={apiTestResults['/me'] === 'pending'}
+                        onClick={() => testEndpoint('/api/me', 'GET')}
+                        disabled={apiTestResults['/api/me'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -348,16 +348,16 @@ export default function DashboardPage() {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">GET /messages</p>
+                      <p className="font-medium">GET /api/messages</p>
                       <p className="text-sm text-muted-foreground">List messages</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/messages'])}
+                      {getStatusIcon(apiTestResults['/api/messages'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/messages', 'GET')}
-                        disabled={apiTestResults['/messages'] === 'pending'}
+                        onClick={() => testEndpoint('/api/messages', 'GET')}
+                        disabled={apiTestResults['/api/messages'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -366,19 +366,19 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">POST /messages</p>
+                      <p className="font-medium">POST /api/messages</p>
                       <p className="text-sm text-muted-foreground">Send message</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/messages-post'])}
+                      {getStatusIcon(apiTestResults['/api/messages-post'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/messages', 'POST', { 
+                        onClick={() => testEndpoint('/api/messages', 'POST', { 
                           content: 'Test message from dashboard', 
                           contact_id: 1
                         })}
-                        disabled={apiTestResults['/messages-post'] === 'pending'}
+                        disabled={apiTestResults['/api/messages-post'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -395,16 +395,16 @@ export default function DashboardPage() {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">GET /contacts</p>
+                      <p className="font-medium">GET /api/contacts</p>
                       <p className="text-sm text-muted-foreground">List contacts</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/contacts'])}
+                      {getStatusIcon(apiTestResults['/api/contacts'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/contacts', 'GET')}
-                        disabled={apiTestResults['/contacts'] === 'pending'}
+                        onClick={() => testEndpoint('/api/contacts', 'GET')}
+                        disabled={apiTestResults['/api/contacts'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -413,20 +413,20 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">POST /contacts</p>
+                      <p className="font-medium">POST /api/contacts</p>
                       <p className="text-sm text-muted-foreground">Create contact</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/contacts-post'])}
+                      {getStatusIcon(apiTestResults['/api/contacts-post'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/contacts', 'POST', { 
+                        onClick={() => testEndpoint('/api/contacts', 'POST', { 
                           name: 'Test Contact', 
                           phone: '+5511999999999',
                           email: 'test@example.com'
                         })}
-                        disabled={apiTestResults['/contacts-post'] === 'pending'}
+                        disabled={apiTestResults['/api/contacts-post'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -443,16 +443,16 @@ export default function DashboardPage() {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">GET /campaigns</p>
+                      <p className="font-medium">GET /api/campaigns</p>
                       <p className="text-sm text-muted-foreground">List campaigns</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/campaigns'])}
+                      {getStatusIcon(apiTestResults['/api/campaigns'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/campaigns', 'GET')}
-                        disabled={apiTestResults['/campaigns'] === 'pending'}
+                        onClick={() => testEndpoint('/api/campaigns', 'GET')}
+                        disabled={apiTestResults['/api/campaigns'] === 'pending'}
                       >
                         Test
                       </Button>
@@ -461,20 +461,20 @@ export default function DashboardPage() {
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
-                      <p className="font-medium">POST /campaigns</p>
+                      <p className="font-medium">POST /api/campaigns</p>
                       <p className="text-sm text-muted-foreground">Create campaign</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(apiTestResults['/campaigns-post'])}
+                      {getStatusIcon(apiTestResults['/api/campaigns-post'])}
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => testEndpoint('/campaigns', 'POST', { 
+                        onClick={() => testEndpoint('/api/campaigns', 'POST', { 
                           name: 'Test Campaign', 
                           message: 'Hello from dashboard test',
                           status: 'draft'
                         })}
-                        disabled={apiTestResults['/campaigns-post'] === 'pending'}
+                        disabled={apiTestResults['/api/campaigns-post'] === 'pending'}
                       >
                         Test
                       </Button>
