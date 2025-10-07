@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 import firebase_admin
 from firebase_admin import credentials
@@ -28,13 +29,17 @@ except (json.JSONDecodeError, ValueError):
 app = FastAPI(
     title="WhatsApp SaaS API",
     description="API para o sistema de automação de vendas via WhatsApp",
-    version="1.0.0",
-    redirect_slashes=False  # Prevent redirects that change HTTPS to HTTP
+    version="1.0.0"
 )
 
 # CORS Configuration
 cors_origins = os.getenv("CORS_ORIGINS", "*")
 origins = ["*"] if cors_origins == "*" else [o.strip() for o in cors_origins.split(",")]
+
+# Add HTTPS redirect middleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+if os.getenv("ENVIRONMENT") == "production":
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
