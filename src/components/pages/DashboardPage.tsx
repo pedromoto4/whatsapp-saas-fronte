@@ -79,6 +79,9 @@ export default function DashboardPage() {
       fullUrl = fullUrl.replace('http://', 'https://')
     }
     
+    console.log(`🌐 Testing ${method} ${endpoint}`)
+    console.log(`🔗 Full URL: ${fullUrl}`)
+    
     setApiTestResults(prev => ({ ...prev, [endpoint]: 'pending' }))
     
     try {
