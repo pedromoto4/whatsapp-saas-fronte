@@ -28,7 +28,8 @@ except (json.JSONDecodeError, ValueError):
 app = FastAPI(
     title="WhatsApp SaaS API",
     description="API para o sistema de automação de vendas via WhatsApp",
-    version="1.0.0"
+    version="1.0.0",
+    redirect_slashes=False  # Prevent redirects that change HTTPS to HTTP
 )
 
 # CORS Configuration
