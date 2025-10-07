@@ -8,10 +8,10 @@ import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
 
-// Try to load Spark if available (async, non-blocking)
-if (typeof window !== 'undefined') {
+// Only load Spark in GitHub Spark environment
+if (typeof window !== 'undefined' && window.location.hostname.includes('spark.github.dev')) {
   import("@github/spark/spark").catch(() => {
-    // Spark not available - that's ok
+    // Failed to load Spark
   })
 }
 
