@@ -73,6 +73,16 @@ export default function DashboardPage() {
     return null
   }
 
+  // Generate consistent result key for endpoint
+  const getResultKey = (endpoint: string, method: string) => {
+    if (method === 'POST') {
+      // Remove trailing slash and add -post suffix
+      return endpoint.replace(/\/$/, '') + '-post'
+    }
+    // For GET, just remove trailing slash
+    return endpoint.replace(/\/$/, '')
+  }
+
   // Test individual endpoints
   const testEndpoint = async (endpoint: string, method: string = 'GET', data?: any) => {
     // Build URL from base and endpoint
@@ -90,7 +100,8 @@ export default function DashboardPage() {
     console.log('Full URL:', fullUrl)
     console.log('Has trailing slash:', endpoint.endsWith('/'))
     
-    setApiTestResults(prev => ({ ...prev, [endpoint]: 'pending' }))
+    const resultKey = getResultKey(endpoint, method)
+    setApiTestResults(prev => ({ ...prev, [resultKey]: 'pending' }))
     
     try {
       const token = await getAuthToken()
@@ -125,7 +136,7 @@ export default function DashboardPage() {
       
       if (response.ok) {
         const result = await response.json()
-        setApiTestResults(prev => ({ ...prev, [endpoint]: 'success' }))
+        setApiTestResults(prev => ({ ...prev, [resultKey]: 'success' }))
         console.log('✅ Success:', result)
         console.groupEnd()
         toast.success(`${endpoint} funcionando!`, {
@@ -140,7 +151,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('❌ Exception:', error)
       console.groupEnd()
-      setApiTestResults(prev => ({ ...prev, [endpoint]: 'error' }))
+      setApiTestResults(prev => ({ ...prev, [resultKey]: 'error' }))
       toast.error(`Erro em ${endpoint}`, {
         description: error instanceof Error ? error.message : 'Erro desconhecido'
       })
