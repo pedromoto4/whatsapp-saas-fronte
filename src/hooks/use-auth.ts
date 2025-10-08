@@ -10,36 +10,36 @@ import {
 import { auth, googleProvider } from '@/lib/firebase'
 import { toast } from 'sonner'
 
-// Custom hook that persists state to localStorage (works everywhere)
-function useLocalStorageState<T>(key: string, defaultValue: T): [T, (value: T) => void] {
-  const [state, setState] = useState<T>(() => {
-    if (typeof window === 'undefined') return defaultValue
+// Simple localStorage-based persistence for compatibility
+function useAuthState(): [boolean, (value: boolean) => void] {
+  const [isLoggedIn, setIsLoggedInState] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
     try {
-      const item = localStorage.getItem(key)
-      return item ? JSON.parse(item) : defaultValue
+      const item = localStorage.getItem('auth-is-logged-in')
+      return item ? JSON.parse(item) : false
     } catch {
-      return defaultValue
+      return false
     }
   })
 
-  const setValue = (value: T) => {
+  const setIsLoggedIn = (value: boolean) => {
     try {
-      setState(value)
+      setIsLoggedInState(value)
       if (typeof window !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(value))
+        localStorage.setItem('auth-is-logged-in', JSON.stringify(value))
       }
     } catch (e) {
-      console.error('Error saving to localStorage:', e)
+      console.error('Error saving auth state:', e)
     }
   }
 
-  return [state, setValue]
+  return [isLoggedIn, setIsLoggedIn]
 }
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useLocalStorageState<boolean>('isLoggedIn', false)
+  const [isLoggedIn, setIsLoggedIn] = useAuthState()
 
   useEffect(() => {
     // Add error handling for Firebase initialization
@@ -58,7 +58,7 @@ export function useAuth() {
       console.error('Firebase auth initialization error:', error)
       setLoading(false)
     }
-  }, [setIsLoggedIn])
+  }, [])
 
   const loginWithEmail = async (email: string, password: string) => {
     try {
