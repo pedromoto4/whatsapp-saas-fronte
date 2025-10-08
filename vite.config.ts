@@ -3,42 +3,43 @@ import react from "@vitejs/plugin-react-swc";
 import { defineConfig, PluginOption } from "vite";
 import { resolve } from 'path'
 
-// Conditional imports for Spark environment
+// Conditional imports for Spark environment with better error handling
 let sparkPlugin: any = null
 let createIconImportProxy: any = null
+let isSparkEnv = false
 
 try {
-  // Check environment variables safely
-  const isSparkEnv = process.env.SPARK_ENV === 'true' || 
-                     typeof process.env.GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined'
+  // More robust environment detection
+  isSparkEnv = typeof window === 'undefined' && (
+    process.env.SPARK_ENV === 'true' || 
+    process.env.NODE_ENV === 'development' ||
+    typeof process.env.GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined'
+  )
   
   if (isSparkEnv) {
-    sparkPlugin = require("@github/spark/spark-vite-plugin").default
-    createIconImportProxy = require("@github/spark/vitePhosphorIconProxyPlugin").default
+    // Try to import Spark plugins
+    try {
+      sparkPlugin = require("@github/spark/spark-vite-plugin").default
+      createIconImportProxy = require("@github/spark/vitePhosphorIconProxyPlugin").default
+      console.log('✅ Spark plugins loaded successfully')
+    } catch (importError) {
+      console.log('⚠️ Spark plugins not available:', importError.message)
+      isSparkEnv = false
+    }
   }
 } catch (e) {
-  // Spark modules not available - running in standard environment
-  console.log('Running in standard (non-Spark) environment')
+  console.log('🔧 Running in standard environment')
+  isSparkEnv = false
 }
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
-
-// Check if running in Spark environment safely
-let isSparkEnv = false
-try {
-  isSparkEnv = process.env.SPARK_ENV === 'true' || 
-               typeof process.env.GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined'
-} catch (e) {
-  // Environment variable access failed - not in Spark environment
-  isSparkEnv = false
-}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Only include Spark plugins if available and in Spark environment
+    // Only include Spark plugins if successfully loaded
     ...(createIconImportProxy ? [createIconImportProxy() as PluginOption] : []),
     ...(isSparkEnv && sparkPlugin ? [sparkPlugin() as PluginOption] : []),
   ],
@@ -47,4 +48,8 @@ export default defineConfig({
       '@': resolve(projectRoot, 'src')
     }
   },
+  // Ensure proper handling of external dependencies
+  optimizeDeps: {
+    exclude: ['@github/spark/hooks']
+  }
 });
