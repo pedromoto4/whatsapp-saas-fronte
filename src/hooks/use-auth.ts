@@ -42,13 +42,22 @@ export function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = useLocalStorageState<boolean>('isLoggedIn', false)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user)
-      setIsLoggedIn(!!user)
-      setLoading(false)
-    })
+    // Add error handling for Firebase initialization
+    try {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user)
+        setIsLoggedIn(!!user)
+        setLoading(false)
+      }, (error) => {
+        console.error('Firebase auth state change error:', error)
+        setLoading(false)
+      })
 
-    return () => unsubscribe()
+      return () => unsubscribe()
+    } catch (error) {
+      console.error('Firebase auth initialization error:', error)
+      setLoading(false)
+    }
   }, [setIsLoggedIn])
 
   const loginWithEmail = async (email: string, password: string) => {
