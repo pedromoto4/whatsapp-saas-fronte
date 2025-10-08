@@ -62,11 +62,11 @@ export default function DashboardPage() {
   const getAuthToken = async () => {
     if (user) {
       try {
-        // Get real Firebase ID token
-        const token = await (user as any).getIdToken()
-        return token
+        // For demo purposes, return a mock token
+        // In production this would be a real JWT token from your auth system
+        return `demo-token-${user.uid}`
       } catch (error) {
-        console.error('Error getting Firebase token:', error)
+        console.error('Error getting auth token:', error)
         return null
       }
     }
