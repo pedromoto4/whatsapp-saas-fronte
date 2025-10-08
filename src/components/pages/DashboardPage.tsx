@@ -156,9 +156,9 @@ export default function DashboardPage() {
       { path: '/health', method: 'GET' },
       { path: '/api/me', method: 'GET' },
       { path: '/api/contacts/', method: 'GET' },
-      { path: '/api/contacts/', method: 'POST', data: { name: 'Test Contact', phone: '+5511999999999', email: 'test@example.com' } },
+      { path: '/api/contacts/', method: 'POST', data: { phone_number: '+5511999999999', name: 'Test Contact', email: 'test@example.com' } },
       { path: '/api/campaigns/', method: 'GET' },
-      { path: '/api/campaigns/', method: 'POST', data: { name: 'Test Campaign', message: 'Hello from dashboard test' } },
+      { path: '/api/campaigns/', method: 'POST', data: { name: 'Test Campaign', message_template: 'Hello from dashboard test' } },
       { path: '/api/messages/', method: 'GET' },
       { path: '/api/messages/', method: 'POST', data: { content: 'Test message from dashboard', contact_id: 1 } },
     ]
@@ -460,8 +460,8 @@ export default function DashboardPage() {
                         size="sm" 
                         variant="outline"
                         onClick={() => testEndpoint('/api/contacts/', 'POST', { 
+                          phone_number: '+5511999999999',
                           name: 'Test Contact', 
-                          phone: '+5511999999999',
                           email: 'test@example.com'
                         })}
                         disabled={apiTestResults['/api/contacts-post'] === 'pending'}
@@ -509,8 +509,7 @@ export default function DashboardPage() {
                         variant="outline"
                         onClick={() => testEndpoint('/api/campaigns/', 'POST', { 
                           name: 'Test Campaign', 
-                          message: 'Hello from dashboard test',
-                          status: 'draft'
+                          message_template: 'Hello from dashboard test'
                         })}
                         disabled={apiTestResults['/api/campaigns-post'] === 'pending'}
                       >
