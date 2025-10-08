@@ -132,6 +132,18 @@ async def create_message(db: AsyncSession, message: MessageCreate) -> Message:
     await db.refresh(db_message)
     return db_message
 
+async def get_messages(db: AsyncSession, owner_id: int, skip: int = 0, limit: int = 100) -> List[Message]:
+    """Get all messages for a user by joining with contacts"""
+    result = await db.execute(
+        select(Message)
+        .join(Contact, Message.contact_id == Contact.id)
+        .where(Contact.owner_id == owner_id)
+        .offset(skip)
+        .limit(limit)
+        .order_by(Message.created_at.desc())
+    )
+    return result.scalars().all()
+
 async def get_messages_by_contact(db: AsyncSession, contact_id: int, owner_id: int, skip: int = 0, limit: int = 100) -> List[Message]:
     # First verify the contact belongs to the user
     contact = await get_contact(db, contact_id, owner_id)

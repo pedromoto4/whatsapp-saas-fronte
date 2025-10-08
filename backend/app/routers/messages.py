@@ -5,9 +5,20 @@ from typing import List
 from app.dependencies import get_db, get_current_user
 from app.models import User
 from app.schemas import MessageResponse, MessageCreate, MessageListResponse
-from app.crud import create_message, get_messages_by_contact, get_messages_by_campaign
+from app.crud import create_message, get_messages, get_messages_by_contact, get_messages_by_campaign
 
 router = APIRouter(prefix="/api/messages", tags=["messages"])
+
+@router.get("/", response_model=MessageListResponse)
+async def list_messages(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all messages for current user"""
+    messages = await get_messages(db, current_user.id, skip, limit)
+    return MessageListResponse(messages=messages, total=len(messages))
 
 @router.post("/", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_message(
