@@ -1,8 +1,14 @@
 /// <reference types="vite/client" />
 
-// GitHub Spark environment variables (optional)
-declare const GITHUB_RUNTIME_PERMANENT_NAME: string | undefined
-declare const BASE_KV_SERVICE_URL: string | undefined
+// GitHub Spark environment variables (optional - accessed via import.meta.env)
+interface ImportMetaEnv {
+  readonly VITE_GITHUB_RUNTIME_PERMANENT_NAME?: string
+  readonly VITE_BASE_KV_SERVICE_URL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
 
 // Extend the window object for Spark runtime (when available)
 declare global {
