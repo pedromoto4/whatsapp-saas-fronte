@@ -8,7 +8,11 @@ let sparkPlugin: any = null
 let createIconImportProxy: any = null
 
 try {
-  if (process.env.SPARK_ENV === 'true' || process.env.GITHUB_RUNTIME_PERMANENT_NAME) {
+  // Check environment variables safely
+  const isSparkEnv = process.env.SPARK_ENV === 'true' || 
+                     typeof process.env.GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined'
+  
+  if (isSparkEnv) {
     sparkPlugin = require("@github/spark/spark-vite-plugin").default
     createIconImportProxy = require("@github/spark/vitePhosphorIconProxyPlugin").default
   }
@@ -19,10 +23,11 @@ try {
 
 const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
-// Check if running in Spark environment
+// Check if running in Spark environment safely
 let isSparkEnv = false
 try {
-  isSparkEnv = process.env.SPARK_ENV === 'true' || !!process.env.GITHUB_RUNTIME_PERMANENT_NAME
+  isSparkEnv = process.env.SPARK_ENV === 'true' || 
+               typeof process.env.GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined'
 } catch (e) {
   // Environment variable access failed - not in Spark environment
   isSparkEnv = false

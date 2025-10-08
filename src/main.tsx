@@ -19,13 +19,10 @@ if (typeof window !== 'undefined') {
       isSparkEnv = true
     }
     
-    // Check for Spark environment variable (wrapped in try-catch)
-    try {
-      if (typeof GITHUB_RUNTIME_PERMANENT_NAME !== 'undefined' && GITHUB_RUNTIME_PERMANENT_NAME) {
-        isSparkEnv = true
-      }
-    } catch (envError) {
-      // GITHUB_RUNTIME_PERMANENT_NAME not available - not in Spark environment
+    // Check for Spark environment variable in safer way
+    if (typeof import.meta.env !== 'undefined' && 
+        import.meta.env.VITE_GITHUB_RUNTIME_PERMANENT_NAME) {
+      isSparkEnv = true
     }
     
     if (isSparkEnv) {
