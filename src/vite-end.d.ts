@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 
+// Spark runtime constants (only defined when running in Spark)
+declare const GITHUB_RUNTIME_PERMANENT_NAME: string | undefined
+declare const BASE_KV_SERVICE_URL: string | undefined
+
 // GitHub Spark environment variables (optional - accessed via import.meta.env)
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string
