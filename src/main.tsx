@@ -8,37 +8,31 @@ import "./main.css"
 import "./styles/theme.css"
 import "./index.css"
 
-// Only load Spark in GitHub Spark environment - simplified and safer
+// GitHub Spark detection and loading with proper error handling
 if (typeof window !== 'undefined') {
   try {
-    // Check if we're in a Spark environment using multiple safe indicators
-    let isSparkEnv = false
+    // Check for Spark environment indicators
+    const hostname = window.location.hostname
+    const isSparkEnvironment = hostname.includes('spark.github.dev') || 
+                              hostname.includes('github.dev') ||
+                              hostname.includes('app.github.dev')
     
-    // Check hostname first (most reliable)
-    if (window.location.hostname.includes('spark.github.dev') || 
-        window.location.hostname.includes('github.dev')) {
-      isSparkEnv = true
-    }
-    
-    // Check for runtime environment variable (optional, with error handling)
-    try {
-      if (import.meta?.env?.VITE_GITHUB_RUNTIME_PERMANENT_NAME) {
-        isSparkEnv = true
-      }
-    } catch (envError) {
-      // Environment variable access failed - continue without it
-      console.log('Environment variable check failed:', envError)
-    }
-    
-    // Only attempt to load Spark if we detected the environment
-    if (isSparkEnv) {
-      import("@github/spark/spark").catch((sparkError) => {
-        console.log('Spark runtime not available:', sparkError.message)
+    if (isSparkEnvironment) {
+      console.log('GitHub Spark environment detected')
+      
+      // Only load Spark runtime if we're in the right environment
+      import("@github/spark/spark").then(() => {
+        console.log('Spark runtime loaded successfully')
+      }).catch((error) => {
+        // Don't throw error, just log it
+        console.log('Spark runtime could not be loaded:', error.message)
       })
+    } else {
+      console.log('Running in standard web environment (non-Spark)')
     }
-  } catch (detectionError) {
-    // Environment detection failed entirely - continue without Spark
-    console.log('Running in standard web environment:', detectionError)
+  } catch (error) {
+    // Catch any errors during environment detection
+    console.log('Environment detection error, continuing as standalone:', error.message)
   }
 }
 
