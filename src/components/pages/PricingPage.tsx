@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from '@/hooks/use-router'
-import { CheckIcon } from '@phosphor-icons/react'
+import { Check } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 export default function PricingPage() {
@@ -89,7 +89,7 @@ export default function PricingPage() {
                   <ul className="space-y-3">
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-start gap-3">
-                        <CheckIcon 
+                        <Check 
                           size={20} 
                           className="text-primary mt-0.5 flex-shrink-0" 
                         />

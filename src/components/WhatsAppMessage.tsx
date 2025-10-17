@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { PaperPlaneIcon, CircleIcon, PhoneIcon, CheckIcon, XIcon } from '@phosphor-icons/react'
+import { PaperPlane, Circle, Phone, Check, X } from '@phosphor-icons/react'
 
 interface WhatsAppMessageProps {
   onMessageSent?: () => void
@@ -99,7 +99,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CircleIcon className="h-5 w-5" />
+            <Circle className="h-5 w-5" />
             Enviar Mensagem WhatsApp
           </CardTitle>
           <CardDescription>
@@ -110,7 +110,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
           <div className="space-y-2">
             <Label htmlFor="phone">Número de Telefone</Label>
             <div className="flex gap-2">
-              <PhoneIcon className="h-4 w-4 text-muted-foreground mt-3" />
+              <Phone className="h-4 w-4 text-muted-foreground mt-3" />
               <Input
                 id="phone"
                 placeholder="+5511999999999"
@@ -152,7 +152,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
               </>
             ) : (
               <>
-                <PaperPlaneIcon className="mr-2 h-4 w-4" />
+                <PaperPlane className="mr-2 h-4 w-4" />
                 Enviar Mensagem
               </>
             )}
@@ -164,7 +164,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckIcon className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-green-500" />
               Última Mensagem Enviada
             </CardTitle>
           </CardHeader>
@@ -187,7 +187,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CircleIcon className="h-5 w-5" />
+            <Circle className="h-5 w-5" />
             Status da Integração WhatsApp
           </CardTitle>
         </CardHeader>
