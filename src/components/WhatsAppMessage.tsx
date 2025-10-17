@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { PaperPlaneTiltIcon, ChatTextIcon, PhoneIcon, CheckCircleIcon, XCircleIcon } from '@phosphor-icons/react'
+import { PaperPlaneTiltIcon, ChatDotsIcon, PhoneIcon, CheckCircleIcon, XCircleIcon } from '@phosphor-icons/react'
 
 interface WhatsAppMessageProps {
   onMessageSent?: () => void
@@ -99,7 +99,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ChatTextIcon className="h-5 w-5" />
+            <ChatDotsIcon className="h-5 w-5" />
             Enviar Mensagem WhatsApp
           </CardTitle>
           <CardDescription>
@@ -187,7 +187,7 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ChatTextIcon className="h-5 w-5" />
+            <ChatDotsIcon className="h-5 w-5" />
             Status da Integração WhatsApp
           </CardTitle>
         </CardHeader>

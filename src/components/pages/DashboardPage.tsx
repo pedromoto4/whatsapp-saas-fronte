@@ -7,14 +7,14 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import WhatsAppMessage from '@/components/WhatsAppMessage'
 import { 
-  ChatTextIcon, 
+  ChatDotsIcon, 
   ChartBarIcon, 
   GearIcon, 
   QuestionIcon,
   ListIcon,
   UsersIcon,
   TrendUpIcon,
-  ChatTextIcon,
+  ChatDotsIcon,
   ShoppingCartIcon,
   BugIcon,
   CheckCircleIcon,
@@ -39,7 +39,7 @@ export default function DashboardPage() {
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBarIcon },
     { id: 'whatsapp' as const, label: 'WhatsApp', icon: PhoneIcon },
-    { id: 'automation' as const, label: 'Automação', icon: ChatTextIcon },
+    { id: 'automation' as const, label: 'Automação', icon: ChatDotsIcon },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCartIcon },
     { id: 'analytics' as const, label: 'Relatórios', icon: TrendUpIcon },
     { id: 'api-test' as const, label: 'Teste API', icon: BugIcon },
@@ -281,7 +281,7 @@ export default function DashboardPage() {
                     className="w-full justify-start"
                     onClick={() => setActiveSection('automation')}
                   >
-                    <ChatTextIcon className="mr-2 h-4 w-4" />
+                    <ChatDotsIcon className="mr-2 h-4 w-4" />
                     Set up automation
                   </Button>
                   <Button 
@@ -636,7 +636,7 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="flex items-center justify-center h-64">
                 <div className="text-center">
-                  <ChatTextIcon size={48} className="text-muted-foreground mx-auto mb-4" />
+                  <ChatDotsIcon size={48} className="text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Automation Coming Soon</h3>
                   <p className="text-muted-foreground">
                     We're building powerful automation tools for you.
