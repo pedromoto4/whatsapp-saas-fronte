@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, List, Any, Optional
 import logging
+import os
 
 from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
@@ -147,24 +148,36 @@ async def get_message_templates(current_user: User = Depends(get_current_user)):
             detail=f"Failed to get templates: {str(e)}"
         )
 
-@router.get("/webhook/debug")
-async def debug_webhook(
-    hub_mode: str = None,
-    hub_challenge: str = None,
-    hub_verify_token: str = None
-):
-    """Debug endpoint to see exactly what Meta is sending"""
-    return {
-        "received_params": {
-            "hub_mode": hub_mode,
-            "hub_challenge": hub_challenge,
-            "hub_verify_token": hub_verify_token,
-            "hub_verify_token_length": len(hub_verify_token) if hub_verify_token else 0
-        },
-        "expected_token": whatsapp_service.webhook_verify_token,
-        "expected_token_length": len(whatsapp_service.webhook_verify_token) if whatsapp_service.webhook_verify_token else 0,
-        "token_match": hub_verify_token == whatsapp_service.webhook_verify_token if hub_verify_token and whatsapp_service.webhook_verify_token else False
-    }
+@router.get("/firebase/status")
+async def firebase_status():
+    """Check Firebase Admin configuration status"""
+    import firebase_admin
+    from firebase_admin import auth
+    
+    try:
+        # Check if Firebase Admin is initialized
+        apps = firebase_admin._apps
+        is_initialized = len(apps) > 0
+        
+        # Check environment variables
+        firebase_creds_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "{}")
+        has_creds = firebase_creds_str != "{}" and firebase_creds_str != ""
+        
+        return {
+            "firebase_admin_initialized": is_initialized,
+            "has_firebase_credentials": has_creds,
+            "credentials_length": len(firebase_creds_str),
+            "apps_count": len(apps) if apps else 0,
+            "error": None
+        }
+    except Exception as e:
+        return {
+            "firebase_admin_initialized": False,
+            "has_firebase_credentials": False,
+            "credentials_length": 0,
+            "apps_count": 0,
+            "error": str(e)
+        }
 
 @router.get("/webhook/config")
 async def webhook_config():
