@@ -25,11 +25,7 @@ export default function LoginPage() {
       } else {
         await loginWithEmail(email, password)
       }
-      
-      // Small delay to ensure state is updated
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 100)
+      // Navigation will be handled by App.tsx useEffect
     } catch (error) {
       // Error is already handled in the useAuth hook
     }
@@ -38,11 +34,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle()
-      
-      // Small delay to ensure state is updated
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 100)
+      // Navigation will be handled by App.tsx useEffect
     } catch (error) {
       // Error is already handled in the useAuth hook
     }
