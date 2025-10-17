@@ -41,28 +41,36 @@ function usePersistentState<T>(key: string, defaultValue: T): [T, (value: T | ((
 export function useAuth() {
   const [user, setUser] = usePersistentState<User | null>('auth-user', null)
   const [isLoggedIn, setIsLoggedIn] = usePersistentState<boolean>('auth-is-logged-in', false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Start with true to show loading initially
 
   // Listen to Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const userData: User = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
-        }
-        setUser(userData)
-        setIsLoggedIn(true)
-        
-        // Store Firebase token for backend authentication
-        firebaseUser.getIdToken().then(token => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      try {
+        if (firebaseUser) {
+          const userData: User = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
+          }
+          setUser(userData)
+          setIsLoggedIn(true)
+          
+          // Store Firebase token for backend authentication
+          const token = await firebaseUser.getIdToken()
           localStorage.setItem('firebase_token', token)
-        })
-      } else {
+        } else {
+          setUser(null)
+          setIsLoggedIn(false)
+          localStorage.removeItem('firebase_token')
+        }
+      } catch (error) {
+        console.error('Auth state change error:', error)
         setUser(null)
         setIsLoggedIn(false)
         localStorage.removeItem('firebase_token')
+      } finally {
+        setLoading(false) // Always set loading to false after auth check
       }
     })
 
