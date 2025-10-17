@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from '@/hooks/use-router'
-import { CheckCircleIcon, CircleIcon, ChartBarIcon, GearIcon } from '@phosphor-icons/react'
+import { CheckIcon, CircleIcon, BarChartIcon, SettingsIcon } from '@phosphor-icons/react'
 
 export default function LandingPage() {
   const { navigate } = useRouter()
@@ -13,12 +13,12 @@ export default function LandingPage() {
       description: "Automate customer conversations with intelligent responses and workflows"
     },
     {
-      icon: <ChartBarIcon size={48} className="text-primary" />,
+      icon: <BarChartIcon size={48} className="text-primary" />,
       title: "Product Catalog",
       description: "Showcase your products with rich media and instant availability updates"
     },
     {
-      icon: <GearIcon size={48} className="text-primary" />,
+      icon: <SettingsIcon size={48} className="text-primary" />,
       title: "Sales Analytics",
       description: "Track performance with detailed reports and actionable insights"
     }
