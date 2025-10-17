@@ -8,8 +8,8 @@ import { toast } from 'sonner'
 import WhatsAppMessage from '@/components/WhatsAppMessage'
 import { 
   CircleIcon, 
-  ChartBarIcon, 
-  GearIcon, 
+  BarChartIcon, 
+  SettingsIcon, 
   QuestionIcon,
   ListIcon,
   UsersIcon,
@@ -17,8 +17,8 @@ import {
   CircleIcon,
   ShoppingCartIcon,
   BugIcon,
-  CheckCircleIcon,
-  XCircleIcon,
+  CheckIcon,
+  XIcon,
   PhoneIcon
 } from '@phosphor-icons/react'
 
@@ -37,7 +37,7 @@ export default function DashboardPage() {
   }
 
   const sidebarItems = [
-    { id: 'overview' as const, label: 'Visão Geral', icon: ChartBarIcon },
+    { id: 'overview' as const, label: 'Visão Geral', icon: BarChartIcon },
     { id: 'whatsapp' as const, label: 'WhatsApp', icon: PhoneIcon },
     { id: 'automation' as const, label: 'Automação', icon: CircleIcon },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCartIcon },
@@ -46,7 +46,7 @@ export default function DashboardPage() {
   ]
 
   const stats = [
-    { label: 'Mensagens Enviadas', value: '2,847', change: '+12%', icon: ChatIcon },
+    { label: 'Mensagens Enviadas', value: '2,847', change: '+12%', icon: CircleIcon },
     { label: 'Clientes Ativos', value: '156', change: '+8%', icon: UsersIcon },
     { label: 'Taxa de Conversão', value: '3.2%', change: '+0.5%', icon: TrendUpIcon },
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCartIcon },
@@ -194,9 +194,9 @@ export default function DashboardPage() {
       case 'pending':
         return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
       case 'success':
-        return <CheckCircleIcon className="h-4 w-4 text-green-500" />
+        return <CheckIcon className="h-4 w-4 text-green-500" />
       case 'error':
-        return <XCircleIcon className="h-4 w-4 text-red-500" />
+        return <XIcon className="h-4 w-4 text-red-500" />
       default:
         return <div className="h-4 w-4 rounded-full border border-muted-foreground"></div>
     }
