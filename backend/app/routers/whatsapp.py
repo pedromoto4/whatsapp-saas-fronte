@@ -155,11 +155,17 @@ async def test_webhook():
 @router.get("/webhook/config")
 async def webhook_config():
     """Show webhook configuration status"""
-    return {
-        "webhook_verify_token_set": bool(whatsapp_service.webhook_verify_token),
-        "webhook_verify_token_length": len(whatsapp_service.webhook_verify_token) if whatsapp_service.webhook_verify_token else 0,
-        "demo_mode": whatsapp_service.demo_mode
-    }
+    try:
+        return {
+            "webhook_verify_token_set": bool(whatsapp_service.webhook_verify_token),
+            "webhook_verify_token_length": len(whatsapp_service.webhook_verify_token) if whatsapp_service.webhook_verify_token else 0,
+            "demo_mode": whatsapp_service.demo_mode,
+            "access_token_set": bool(whatsapp_service.access_token),
+            "phone_number_id_set": bool(whatsapp_service.phone_number_id)
+        }
+    except Exception as e:
+        logger.error(f"Error in webhook config: {e}")
+        return {"error": str(e)}
 
 @router.get("/webhook")
 async def verify_webhook(
