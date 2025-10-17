@@ -12,17 +12,10 @@ function App() {
   const { currentRoute, navigate } = useRouter()
   const { isLoggedIn, loading } = useAuth()
 
-  // Debug logging
-  console.log('App render:', { currentRoute, isLoggedIn, loading })
-
   // Auto-redirect logged in users from home/login to dashboard
   useEffect(() => {
-    console.log('Auth effect:', { loading, isLoggedIn, currentRoute })
-    if (!loading && isLoggedIn) {
-      if (currentRoute === '/' || currentRoute === '/login') {
-        console.log('Redirecting to dashboard...')
-        navigate('/dashboard')
-      }
+    if (!loading && isLoggedIn && (currentRoute === '/' || currentRoute === '/login')) {
+      navigate('/dashboard')
     }
   }, [loading, isLoggedIn, currentRoute, navigate])
 

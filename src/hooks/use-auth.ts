@@ -75,7 +75,7 @@ export function useAuth() {
     })
 
     return () => unsubscribe()
-  }, [setUser, setIsLoggedIn])
+  }, []) // Remove dependencies to prevent infinite loop
 
   const loginWithEmail = async (email: string, password: string) => {
     try {
