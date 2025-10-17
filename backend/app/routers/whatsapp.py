@@ -2,7 +2,7 @@
 WhatsApp Business API Router
 Handles WhatsApp-specific endpoints and webhooks
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, List, Any, Optional
 import logging
@@ -149,20 +149,31 @@ async def get_message_templates(current_user: User = Depends(get_current_user)):
 
 @router.get("/webhook")
 async def verify_webhook(
-    hub_mode: str,
-    hub_challenge: str,
-    hub_verify_token: str
+    hub_mode: str = None,
+    hub_challenge: str = None,
+    hub_verify_token: str = None
 ):
     """Verify WhatsApp webhook"""
-    challenge = await whatsapp_service.verify_webhook(
+    logger.info(f"Webhook verification attempt: mode={hub_mode}, token={hub_verify_token}, challenge={hub_challenge}")
+    
+    if not hub_mode or not hub_challenge or not hub_verify_token:
+        logger.warning("Missing webhook parameters")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing required webhook parameters"
+        )
+    
+    challenge = whatsapp_service.verify_webhook(
         mode=hub_mode,
         token=hub_verify_token,
         challenge=hub_challenge
     )
     
     if challenge:
-        return int(challenge)
+        logger.info("Webhook verification successful")
+        return Response(content=challenge, media_type="text/plain")
     else:
+        logger.warning("Webhook verification failed - invalid token")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Webhook verification failed"
