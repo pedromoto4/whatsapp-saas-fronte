@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
-import { GoogleLogo } from '@phosphor-icons/react'
+import { GoogleLogoIcon } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
@@ -101,7 +101,7 @@ export default function LoginPage() {
             onClick={handleGoogleLogin}
             disabled={loading}
           >
-            <GoogleLogo className="mr-2 h-4 w-4" />
+            <GoogleLogoIcon className="mr-2 h-4 w-4" />
             {loading ? 'Conectando...' : 'Continuar com Google'}
           </Button>
 

@@ -7,19 +7,19 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import WhatsAppMessage from '@/components/WhatsAppMessage'
 import { 
-  ChatCircle, 
-  ChartBar, 
-  Gear, 
-  Question,
-  List,
-  Users,
-  TrendUp,
-  Chat,
-  ShoppingCart,
-  Bug,
-  CheckCircle,
-  XCircle,
-  Phone
+  ChatCircleIcon, 
+  ChartBarIcon, 
+  GearIcon, 
+  QuestionIcon,
+  ListIcon,
+  UsersIcon,
+  TrendUpIcon,
+  ChatIcon,
+  ShoppingCartIcon,
+  BugIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  PhoneIcon
 } from '@phosphor-icons/react'
 
 type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp'
@@ -37,19 +37,19 @@ export default function DashboardPage() {
   }
 
   const sidebarItems = [
-    { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
-    { id: 'whatsapp' as const, label: 'WhatsApp', icon: Phone },
-    { id: 'automation' as const, label: 'Automação', icon: ChatCircle },
-    { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
-    { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
-    { id: 'api-test' as const, label: 'Teste API', icon: Bug },
+    { id: 'overview' as const, label: 'Visão Geral', icon: ChartBarIcon },
+    { id: 'whatsapp' as const, label: 'WhatsApp', icon: PhoneIcon },
+    { id: 'automation' as const, label: 'Automação', icon: ChatCircleIcon },
+    { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCartIcon },
+    { id: 'analytics' as const, label: 'Relatórios', icon: TrendUpIcon },
+    { id: 'api-test' as const, label: 'Teste API', icon: BugIcon },
   ]
 
   const stats = [
-    { label: 'Mensagens Enviadas', value: '2,847', change: '+12%', icon: Chat },
-    { label: 'Clientes Ativos', value: '156', change: '+8%', icon: Users },
-    { label: 'Taxa de Conversão', value: '3.2%', change: '+0.5%', icon: TrendUp },
-    { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
+    { label: 'Mensagens Enviadas', value: '2,847', change: '+12%', icon: ChatIcon },
+    { label: 'Clientes Ativos', value: '156', change: '+8%', icon: UsersIcon },
+    { label: 'Taxa de Conversão', value: '3.2%', change: '+0.5%', icon: TrendUpIcon },
+    { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCartIcon },
   ]
 
   // Backend API URL - use environment variable or fallback, always enforce HTTPS
@@ -194,9 +194,9 @@ export default function DashboardPage() {
       case 'pending':
         return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircleIcon className="h-4 w-4 text-green-500" />
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />
+        return <XCircleIcon className="h-4 w-4 text-red-500" />
       default:
         return <div className="h-4 w-4 rounded-full border border-muted-foreground"></div>
     }
@@ -281,7 +281,7 @@ export default function DashboardPage() {
                     className="w-full justify-start"
                     onClick={() => setActiveSection('automation')}
                   >
-                    <ChatCircle className="mr-2 h-4 w-4" />
+                    <ChatCircleIcon className="mr-2 h-4 w-4" />
                     Set up automation
                   </Button>
                   <Button 
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                     className="w-full justify-start"
                     onClick={() => setActiveSection('catalog')}
                   >
-                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    <ShoppingCartIcon className="mr-2 h-4 w-4" />
                     Add products
                   </Button>
                   <Button 
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                     className="w-full justify-start"
                     onClick={() => setActiveSection('analytics')}
                   >
-                    <TrendUp className="mr-2 h-4 w-4" />
+                    <TrendUpIcon className="mr-2 h-4 w-4" />
                     View reports
                   </Button>
                 </CardContent>
@@ -347,7 +347,7 @@ export default function DashboardPage() {
                     {isTestingAll ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     ) : (
-                      <Bug className="mr-2 h-4 w-4" />
+                      <BugIcon className="mr-2 h-4 w-4" />
                     )}
                     Testar Todos os Endpoints
                   </Button>
@@ -636,7 +636,7 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="flex items-center justify-center h-64">
                 <div className="text-center">
-                  <ChatCircle size={48} className="text-muted-foreground mx-auto mb-4" />
+                  <ChatCircleIcon size={48} className="text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Automation Coming Soon</h3>
                   <p className="text-muted-foreground">
                     We're building powerful automation tools for you.
@@ -659,7 +659,7 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="flex items-center justify-center h-64">
                 <div className="text-center">
-                  <ShoppingCart size={48} className="text-muted-foreground mx-auto mb-4" />
+                  <ShoppingCartIcon size={48} className="text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Catalog Management Coming Soon</h3>
                   <p className="text-muted-foreground">
                     Advanced product management tools are in development.
@@ -682,7 +682,7 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="flex items-center justify-center h-64">
                 <div className="text-center">
-                  <TrendUp size={48} className="text-muted-foreground mx-auto mb-4" />
+                  <TrendUpIcon size={48} className="text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Advanced Analytics Coming Soon</h3>
                   <p className="text-muted-foreground">
                     Comprehensive reporting and analytics dashboard in development.
