@@ -2,7 +2,7 @@
 WhatsApp Business API Router
 Handles WhatsApp-specific endpoints and webhooks
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, List, Any, Optional
 import logging
@@ -147,10 +147,24 @@ async def get_message_templates(current_user: User = Depends(get_current_user)):
             detail=f"Failed to get templates: {str(e)}"
         )
 
-@router.get("/webhook/test")
-async def test_webhook():
-    """Test endpoint to verify webhook is accessible"""
-    return {"status": "ok", "message": "Webhook endpoint is accessible"}
+@router.get("/webhook/debug")
+async def debug_webhook(
+    hub_mode: str = None,
+    hub_challenge: str = None,
+    hub_verify_token: str = None
+):
+    """Debug endpoint to see exactly what Meta is sending"""
+    return {
+        "received_params": {
+            "hub_mode": hub_mode,
+            "hub_challenge": hub_challenge,
+            "hub_verify_token": hub_verify_token,
+            "hub_verify_token_length": len(hub_verify_token) if hub_verify_token else 0
+        },
+        "expected_token": whatsapp_service.webhook_verify_token,
+        "expected_token_length": len(whatsapp_service.webhook_verify_token) if whatsapp_service.webhook_verify_token else 0,
+        "token_match": hub_verify_token == whatsapp_service.webhook_verify_token if hub_verify_token and whatsapp_service.webhook_verify_token else False
+    }
 
 @router.get("/webhook/config")
 async def webhook_config():
@@ -169,9 +183,9 @@ async def webhook_config():
 
 @router.get("/webhook")
 async def verify_webhook(
-    hub_mode: str = None,
-    hub_challenge: str = None,
-    hub_verify_token: str = None
+    hub_mode: str = Query(None, alias="hub.mode"),
+    hub_challenge: str = Query(None, alias="hub.challenge"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token")
 ):
     """Verify WhatsApp webhook"""
     logger.info(f"Webhook verification attempt: mode={hub_mode}, token={hub_verify_token}, challenge={hub_challenge}")
@@ -179,20 +193,20 @@ async def verify_webhook(
     if not hub_mode or not hub_challenge or not hub_verify_token:
         logger.warning("Missing webhook parameters")
         return Response(
-            content="Missing required webhook parameters: hub_mode, hub_challenge, hub_verify_token",
+            content="Missing required webhook parameters: hub.mode, hub.challenge, hub.verify_token",
             status_code=400,
             media_type="text/plain"
         )
     
-    challenge = whatsapp_service.verify_webhook(
+    challenge_result = whatsapp_service.verify_webhook(
         mode=hub_mode,
         token=hub_verify_token,
         challenge=hub_challenge
     )
     
-    if challenge:
+    if challenge_result:
         logger.info("Webhook verification successful")
-        return Response(content=challenge, media_type="text/plain")
+        return Response(content=challenge_result, media_type="text/plain")
     else:
         logger.warning("Webhook verification failed - invalid token")
         return Response(
