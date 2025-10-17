@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { firebaseAuth, auth } from '@/lib/firebase'
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'
 
 interface User {
   uid: string
@@ -41,27 +43,73 @@ export function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = usePersistentState<boolean>('auth-is-logged-in', false)
   const [loading, setLoading] = useState(false)
 
+  // Listen to Firebase auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        const userData: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
+        }
+        setUser(userData)
+        setIsLoggedIn(true)
+        
+        // Store Firebase token for backend authentication
+        firebaseUser.getIdToken().then(token => {
+          localStorage.setItem('firebase_token', token)
+        })
+      } else {
+        setUser(null)
+        setIsLoggedIn(false)
+        localStorage.removeItem('firebase_token')
+      }
+    })
+
+    return () => unsubscribe()
+  }, [setUser, setIsLoggedIn])
+
   const loginWithEmail = async (email: string, password: string) => {
     try {
       setLoading(true)
       
-      // Simulate authentication - in real app this would call your backend
-      if (email && password) {
-        const mockUser: User = {
-          uid: 'demo-user-' + Date.now(),
-          email: email,
-          displayName: email.split('@')[0]
-        }
-        
-        setUser(mockUser)
-        setIsLoggedIn(true)
-        toast.success('Login realizado com sucesso!')
-        return { user: mockUser }
-      } else {
-        throw new Error('Email e password são obrigatórios')
+      const userCredential = await firebaseAuth.signInWithEmail(auth, email, password)
+      const firebaseUser = userCredential.user
+      
+      const userData: User = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
       }
+      
+      // Get Firebase token for backend
+      const token = await firebaseUser.getIdToken()
+      localStorage.setItem('firebase_token', token)
+      
+      toast.success('Login realizado com sucesso!')
+      return { user: userData }
     } catch (error: any) {
-      toast.error('Erro no login: ' + error.message)
+      console.error('Login error:', error)
+      let errorMessage = 'Erro no login'
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'Utilizador não encontrado'
+          break
+        case 'auth/wrong-password':
+          errorMessage = 'Password incorreta'
+          break
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido'
+          break
+        case 'auth/too-many-requests':
+          errorMessage = 'Muitas tentativas. Tente novamente mais tarde'
+          break
+        default:
+          errorMessage = error.message || 'Erro desconhecido'
+      }
+      
+      toast.error(errorMessage)
       throw error
     } finally {
       setLoading(false)
@@ -72,19 +120,24 @@ export function useAuth() {
     try {
       setLoading(true)
       
-      // Simulate Google authentication
-      const mockUser: User = {
-        uid: 'google-user-' + Date.now(),
-        email: 'demo@gmail.com',
-        displayName: 'Demo User'
+      const result = await firebaseAuth.signInWithGoogle()
+      const firebaseUser = result.user
+      
+      const userData: User = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
       }
       
-      setUser(mockUser)
-      setIsLoggedIn(true)
+      // Get Firebase token for backend
+      const token = await firebaseUser.getIdToken()
+      localStorage.setItem('firebase_token', token)
+      
       toast.success('Login com Google realizado com sucesso!')
-      return { user: mockUser }
+      return { user: userData }
     } catch (error: any) {
-      toast.error('Erro no login com Google: ' + error.message)
+      console.error('Google login error:', error)
+      toast.error('Erro no login com Google: ' + (error.message || 'Erro desconhecido'))
       throw error
     } finally {
       setLoading(false)
@@ -95,23 +148,40 @@ export function useAuth() {
     try {
       setLoading(true)
       
-      // Simulate registration
-      if (email && password) {
-        const mockUser: User = {
-          uid: 'new-user-' + Date.now(),
-          email: email,
-          displayName: email.split('@')[0]
-        }
-        
-        setUser(mockUser)
-        setIsLoggedIn(true)
-        toast.success('Conta criada com sucesso!')
-        return { user: mockUser }
-      } else {
-        throw new Error('Email e password são obrigatórios')
+      const userCredential = await firebaseAuth.createUser(auth, email, password)
+      const firebaseUser = userCredential.user
+      
+      const userData: User = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
       }
+      
+      // Get Firebase token for backend
+      const token = await firebaseUser.getIdToken()
+      localStorage.setItem('firebase_token', token)
+      
+      toast.success('Conta criada com sucesso!')
+      return { user: userData }
     } catch (error: any) {
-      toast.error('Erro ao criar conta: ' + error.message)
+      console.error('Registration error:', error)
+      let errorMessage = 'Erro ao criar conta'
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este email já está em uso'
+          break
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido'
+          break
+        case 'auth/weak-password':
+          errorMessage = 'Password muito fraca'
+          break
+        default:
+          errorMessage = error.message || 'Erro desconhecido'
+      }
+      
+      toast.error(errorMessage)
       throw error
     } finally {
       setLoading(false)
@@ -120,11 +190,11 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      setUser(null)
-      setIsLoggedIn(false)
+      await firebaseAuth.signOut()
       toast.success('Logout realizado com sucesso!')
     } catch (error: any) {
-      toast.error('Erro no logout: ' + error.message)
+      console.error('Logout error:', error)
+      toast.error('Erro no logout: ' + (error.message || 'Erro desconhecido'))
     }
   }
 

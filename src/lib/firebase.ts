@@ -1,6 +1,7 @@
-// Firebase configuration removed to prevent conflicts with GitHub Spark runtime
-// Authentication is now handled through the useAuth hook with native Spark persistence
+import { initializeApp } from 'firebase/app'
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth'
 
+// Firebase configuration
 export const firebaseConfig = {
   apiKey: "AIzaSyAg68Lyt3zvJPGb-o_LLreVXkTlRso2I3Q",
   authDomain: "whatsapp-saas-d7e5c.firebaseapp.com", 
@@ -11,4 +12,19 @@ export const firebaseConfig = {
   measurementId: "G-GZ3SMXRQ61"
 }
 
-// Configuration preserved for future backend integration
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
+
+// Initialize Firebase Auth
+export const auth = getAuth(app)
+
+// Google Auth Provider
+export const googleProvider = new GoogleAuthProvider()
+
+// Auth functions
+export const firebaseAuth = {
+  signInWithEmail: signInWithEmailAndPassword,
+  createUser: createUserWithEmailAndPassword,
+  signInWithGoogle: () => signInWithPopup(auth, googleProvider),
+  signOut: () => signOut(auth)
+}
