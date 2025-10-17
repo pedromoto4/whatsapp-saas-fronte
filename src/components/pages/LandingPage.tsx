@@ -1,14 +1,14 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from '@/hooks/use-router'
-import { CheckCircleIcon, ChatIcon, ChartBarIcon, GearIcon } from '@phosphor-icons/react'
+import { CheckCircleIcon, ChatTextIcon, ChartBarIcon, GearIcon } from '@phosphor-icons/react'
 
 export default function LandingPage() {
   const { navigate } = useRouter()
 
   const features = [
     {
-      icon: <ChatIcon size={48} className="text-primary" />,
+      icon: <ChatTextIcon size={48} className="text-primary" />,
       title: "Smart Automation",
       description: "Automate customer conversations with intelligent responses and workflows"
     },
