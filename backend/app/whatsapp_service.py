@@ -19,8 +19,14 @@ class WhatsAppService:
         self.api_version = "v18.0"
         self.base_url = f"https://graph.facebook.com/{self.api_version}"
         
-        if not all([self.access_token, self.phone_number_id]):
-            logger.warning("WhatsApp credentials not configured. Service will run in demo mode.")
+        # Check if demo mode is enabled
+        demo_mode_env = os.getenv("WHATSAPP_DEMO_MODE", "true").lower()
+        self.demo_mode = demo_mode_env == "true" or not all([self.access_token, self.phone_number_id])
+        
+        if self.demo_mode:
+            logger.warning("WhatsApp service running in DEMO MODE.")
+        else:
+            logger.info("WhatsApp service running in PRODUCTION MODE.")
     
     async def send_message(self, to: str, message: str, message_type: str = "text") -> Dict[str, Any]:
         """
@@ -162,7 +168,7 @@ class WhatsAppService:
             logger.error(f"WhatsApp templates API error: {e}")
             return []
     
-    async def verify_webhook(self, mode: str, token: str, challenge: str) -> Optional[str]:
+    def verify_webhook(self, mode: str, token: str, challenge: str) -> Optional[str]:
         """
         Verify webhook for WhatsApp Business API
         
@@ -174,9 +180,14 @@ class WhatsAppService:
         Returns:
             Challenge string if verification successful, None otherwise
         """
+        logger.info(f"Webhook verification: mode={mode}, token_length={len(token) if token else 0}, challenge={challenge}")
+        
         if mode == "subscribe" and token == self.webhook_verify_token:
+            logger.info("Webhook verification successful")
             return challenge
-        return None
+        else:
+            logger.warning(f"Webhook verification failed: mode={mode}, token_match={token == self.webhook_verify_token}")
+            return None
     
     async def process_webhook(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
