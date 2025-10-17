@@ -35,7 +35,11 @@ export default function WhatsAppMessage({ onMessageSent }: WhatsAppMessageProps)
 
     try {
       // Get auth token
-      const token = localStorage.getItem('firebase_token') || 'demo-token'
+      const token = localStorage.getItem('firebase_token')
+      if (!token) {
+        toast.error('Token de autenticação não encontrado. Por favor, faça login novamente.')
+        return
+      }
       
       // Get API base URL
       let baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
