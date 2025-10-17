@@ -173,3 +173,34 @@ async def get_messages_by_campaign(db: AsyncSession, campaign_id: int, owner_id:
         .order_by(Message.created_at.desc())
     )
     return result.scalars().all()
+
+# WhatsApp-specific CRUD functions
+async def get_contact_by_phone(db: AsyncSession, phone_number: str) -> Optional[Contact]:
+    """Get contact by phone number"""
+    result = await db.execute(select(Contact).where(Contact.phone_number == phone_number))
+    return result.scalar_one_or_none()
+
+async def create_contact(db: AsyncSession, contact_data: dict) -> Contact:
+    """Create a new contact"""
+    db_contact = Contact(**contact_data)
+    db.add(db_contact)
+    await db.commit()
+    await db.refresh(db_contact)
+    return db_contact
+
+async def create_message(db: AsyncSession, message_data: dict) -> Message:
+    """Create a new message"""
+    db_message = Message(**message_data)
+    db.add(db_message)
+    await db.commit()
+    await db.refresh(db_message)
+    return db_message
+
+async def get_messages_by_contact(db: AsyncSession, contact_id: int) -> List[Message]:
+    """Get all messages for a specific contact"""
+    result = await db.execute(
+        select(Message)
+        .where(Message.contact_id == contact_id)
+        .order_by(Message.created_at.desc())
+    )
+    return result.scalars().all()

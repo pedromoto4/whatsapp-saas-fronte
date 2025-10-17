@@ -11,7 +11,7 @@ from app.database import create_tables
 from app.models import User
 from app.schemas import UserResponse
 from app.dependencies import get_current_user, get_db
-from app.routers import contacts, campaigns, messages
+from app.routers import contacts, campaigns, messages, whatsapp
 
 load_dotenv()
 
@@ -47,6 +47,7 @@ app.add_middleware(
 app.include_router(contacts.router)
 app.include_router(campaigns.router)
 app.include_router(messages.router)
+app.include_router(whatsapp.router)
 
 @app.on_event("startup")
 async def startup_event():

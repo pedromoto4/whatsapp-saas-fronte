@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import WhatsAppMessage from '@/components/WhatsAppMessage'
 import { 
   ChatCircle, 
   ChartBar, 
@@ -17,10 +18,11 @@ import {
   ShoppingCart,
   Bug,
   CheckCircle,
-  XCircle
+  XCircle,
+  Phone
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -36,6 +38,7 @@ export default function DashboardPage() {
 
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
+    { id: 'whatsapp' as const, label: 'WhatsApp', icon: Phone },
     { id: 'automation' as const, label: 'Automação', icon: ChatCircle },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
     { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
@@ -166,6 +169,8 @@ export default function DashboardPage() {
     const endpoints = [
       { path: '/health', method: 'GET' },
       { path: '/api/me', method: 'GET' },
+      { path: '/whatsapp/status', method: 'GET' },
+      { path: '/whatsapp/templates', method: 'GET' },
       { path: '/api/contacts/', method: 'GET' },
       { path: '/api/contacts/', method: 'POST', data: { phone_number: '+5511999999999', name: 'Test Contact', email: 'test@example.com' } },
       { path: '/api/campaigns/', method: 'GET' },
@@ -301,6 +306,21 @@ export default function DashboardPage() {
           </div>
         )
       
+      case 'whatsapp':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">WhatsApp Business</h2>
+              <p className="text-muted-foreground">
+                Envie mensagens diretamente via WhatsApp Business API
+              </p>
+            </div>
+            <WhatsAppMessage onMessageSent={() => {
+              toast.success('Mensagem enviada!')
+            }} />
+          </div>
+        )
+      
       case 'api-test':
         return (
           <div className="space-y-6">
@@ -381,6 +401,50 @@ export default function DashboardPage() {
                         variant="outline"
                         onClick={() => testEndpoint('/api/me', 'GET')}
                         disabled={apiTestResults['/api/me'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>WhatsApp API</CardTitle>
+                  <CardDescription>WhatsApp Business API integration</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /whatsapp/status</p>
+                      <p className="text-sm text-muted-foreground">WhatsApp service status</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/whatsapp/status'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/whatsapp/status', 'GET')}
+                        disabled={apiTestResults['/whatsapp/status'] === 'pending'}
+                      >
+                        Test
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">GET /whatsapp/templates</p>
+                      <p className="text-sm text-muted-foreground">Get message templates</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(apiTestResults['/whatsapp/templates'])}
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testEndpoint('/whatsapp/templates', 'GET')}
+                        disabled={apiTestResults['/whatsapp/templates'] === 'pending'}
                       >
                         Test
                       </Button>

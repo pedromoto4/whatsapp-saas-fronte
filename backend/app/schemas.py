@@ -84,8 +84,9 @@ class MessageBase(BaseModel):
     content: str
 
 class MessageCreate(MessageBase):
-    contact_id: int
+    contact_id: Optional[int] = None
     campaign_id: Optional[int] = None
+    phone_number: Optional[str] = None  # For WhatsApp direct sending
 
 class MessageResponse(MessageBase):
     id: int
@@ -111,3 +112,30 @@ class CampaignListResponse(BaseModel):
 class MessageListResponse(BaseModel):
     messages: List[MessageResponse]
     total: int
+
+# WhatsApp-specific Schemas
+class WhatsAppMessageSend(BaseModel):
+    phone_number: str
+    content: str
+    message_type: str = "text"
+
+class WhatsAppTemplateSend(BaseModel):
+    phone_number: str
+    template_name: str
+    template_params: Optional[List[str]] = None
+
+class WhatsAppTemplate(BaseModel):
+    name: str
+    status: str
+    category: str
+    language: str
+    components: List[dict]
+
+class WhatsAppWebhookData(BaseModel):
+    entry: List[dict]
+    object: str
+
+class WhatsAppStatusResponse(BaseModel):
+    configured: bool
+    service: str
+    demo_mode: bool

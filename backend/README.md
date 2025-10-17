@@ -9,6 +9,9 @@ API backend construída com FastAPI para o sistema de automação de vendas via 
 - 🚀 Deploy automático no Railway
 - 📝 API REST completa
 - 🏗️ Migrações com Alembic
+- 📱 Integração WhatsApp Business API
+- 🤖 Envio de mensagens e templates
+- 📨 Webhook para receber mensagens
 
 ## Configuração Local
 
@@ -30,6 +33,9 @@ Preencha as variáveis:
 - `DATABASE_URL`: URL do PostgreSQL
 - `FIREBASE_CREDENTIALS_JSON`: Credenciais do Firebase Admin SDK (JSON completo)
 - `CORS_ORIGINS`: Origens permitidas para CORS
+- `WHATSAPP_ACCESS_TOKEN`: Token de acesso da API do WhatsApp Business
+- `WHATSAPP_PHONE_NUMBER_ID`: ID do número de telefone do WhatsApp Business
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: Token de verificação do webhook
 
 ### 3. Executar Migrações
 
@@ -64,6 +70,9 @@ No Railway, configure:
 - `DATABASE_URL`: URL do PostgreSQL do Railway
 - `FIREBASE_CREDENTIALS_JSON`: Credenciais do Firebase (JSON como string)
 - `CORS_ORIGINS`: Domínios do frontend (separados por vírgula)
+- `WHATSAPP_ACCESS_TOKEN`: Token de acesso da API do WhatsApp Business
+- `WHATSAPP_PHONE_NUMBER_ID`: ID do número de telefone do WhatsApp Business
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: Token de verificação do webhook
 
 ### 4. Deploy Automático
 
@@ -121,6 +130,14 @@ backend/
 - `POST /api/messages` - Criar mensagem
 - `GET /api/messages/contact/{id}` - Mensagens por contato
 - `GET /api/messages/campaign/{id}` - Mensagens por campanha
+
+#### WhatsApp Business API
+- `GET /whatsapp/status` - Status da integração WhatsApp
+- `POST /whatsapp/send-message` - Enviar mensagem via WhatsApp
+- `POST /whatsapp/send-template` - Enviar template via WhatsApp
+- `GET /whatsapp/templates` - Listar templates aprovados
+- `GET /whatsapp/webhook` - Verificar webhook
+- `POST /whatsapp/webhook` - Receber mensagens do WhatsApp
 
 ## Documentação
 
