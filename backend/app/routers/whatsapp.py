@@ -147,6 +147,20 @@ async def get_message_templates(current_user: User = Depends(get_current_user)):
             detail=f"Failed to get templates: {str(e)}"
         )
 
+@router.get("/webhook/test")
+async def test_webhook():
+    """Test endpoint to verify webhook is accessible"""
+    return {"status": "ok", "message": "Webhook endpoint is accessible"}
+
+@router.get("/webhook/config")
+async def webhook_config():
+    """Show webhook configuration status"""
+    return {
+        "webhook_verify_token_set": bool(whatsapp_service.webhook_verify_token),
+        "webhook_verify_token_length": len(whatsapp_service.webhook_verify_token) if whatsapp_service.webhook_verify_token else 0,
+        "demo_mode": whatsapp_service.demo_mode
+    }
+
 @router.get("/webhook")
 async def verify_webhook(
     hub_mode: str = None,
@@ -158,9 +172,10 @@ async def verify_webhook(
     
     if not hub_mode or not hub_challenge or not hub_verify_token:
         logger.warning("Missing webhook parameters")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing required webhook parameters"
+        return Response(
+            content="Missing required webhook parameters: hub_mode, hub_challenge, hub_verify_token",
+            status_code=400,
+            media_type="text/plain"
         )
     
     challenge = whatsapp_service.verify_webhook(
@@ -174,9 +189,10 @@ async def verify_webhook(
         return Response(content=challenge, media_type="text/plain")
     else:
         logger.warning("Webhook verification failed - invalid token")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Webhook verification failed"
+        return Response(
+            content="Webhook verification failed",
+            status_code=403,
+            media_type="text/plain"
         )
 
 @router.post("/webhook")
