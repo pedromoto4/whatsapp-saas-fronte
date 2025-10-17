@@ -43,6 +43,7 @@ async def get_current_user(
         
         return user
     except Exception as e:
+        print(f"Firebase auth error: {e}")  # Debug log
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
