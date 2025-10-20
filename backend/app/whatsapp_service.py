@@ -65,10 +65,38 @@ class WhatsAppService:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, headers=headers, json=payload)
+                
+                # Log detailed response for debugging
+                logger.info(f"WhatsApp API Response Status: {response.status_code}")
+                logger.info(f"WhatsApp API Response Body: {response.text}")
+                
                 response.raise_for_status()
-                return response.json()
+                response_data = response.json()
+                
+                # Add delivery status information
+                if response_data.get("messages"):
+                    message_id = response_data["messages"][0].get("id")
+                    logger.info(f"Message sent successfully with ID: {message_id}")
+                    
+                    # Add helpful information about delivery
+                    response_data["delivery_info"] = {
+                        "message_id": message_id,
+                        "status": "sent",
+                        "note": "Message sent to WhatsApp. Delivery depends on 24h window rule and recipient's WhatsApp status."
+                    }
+                
+                return response_data
         except httpx.HTTPError as e:
             logger.error(f"WhatsApp API error: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Error response: {e.response.text}")
+                try:
+                    error_data = e.response.json()
+                    error_message = error_data.get("error", {}).get("message", str(e))
+                    error_code = error_data.get("error", {}).get("code", "unknown")
+                    logger.error(f"Error code: {error_code}, Message: {error_message}")
+                except:
+                    pass
             raise Exception(f"Failed to send WhatsApp message: {e}")
     
     async def send_template_message(self, to: str, template_name: str, 

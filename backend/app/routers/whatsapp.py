@@ -68,7 +68,15 @@ async def send_whatsapp_message(
             "success": True,
             "message": "Message sent successfully",
             "whatsapp_response": response,
-            "message_id": message.id
+            "message_id": message.id,
+            "delivery_info": {
+                "status": "sent",
+                "note": "Message sent to WhatsApp API. Actual delivery depends on WhatsApp's 24-hour window rule.",
+                "troubleshooting": {
+                    "if_not_delivered": "Recipient may need to message your business number first to open 24h window",
+                    "alternative": "Use approved message templates for guaranteed delivery"
+                }
+            }
         }
         
     except Exception as e:
