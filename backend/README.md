@@ -139,7 +139,7 @@ backend/
 - `GET /whatsapp/webhook` - Verificar webhook
 - `POST /whatsapp/webhook` - Receber mensagens do WhatsApp
 
-## Documentação
+## Documentação API
 
 Com o servidor rodando, acesse:
 - Swagger UI: http://localhost:8000/docs
