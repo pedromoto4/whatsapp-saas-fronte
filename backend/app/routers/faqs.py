@@ -11,7 +11,7 @@ from app.models import User
 from app.schemas import FAQCreate, FAQUpdate, FAQResponse
 from app.crud import create_faq, get_faqs, get_faq, update_faq, delete_faq
 
-router = APIRouter(prefix="/faqs", tags=["FAQs"])
+router = APIRouter(prefix="/api/faqs", tags=["FAQs"])
 
 @router.post("/", response_model=FAQResponse)
 async def create_faq_endpoint(
