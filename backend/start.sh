@@ -8,6 +8,20 @@ else
     APP_PORT=8000
 fi
 
+echo "Running database migrations..."
+python3 -c "
+import asyncio
+from app.database import engine, Base
+from app.models import User, Contact, Campaign, Message, FAQ
+
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print('Database tables created successfully')
+
+asyncio.run(create_tables())
+"
+
 echo "Starting FastAPI application on port $APP_PORT"
 
 # Start uvicorn with the resolved port
