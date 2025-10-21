@@ -12,7 +12,7 @@ echo "Running database migrations..."
 python3 -c "
 import asyncio
 from app.database import engine, Base
-from app.models import User, Contact, Campaign, Message, FAQ
+from app.models import User, Contact, Campaign, Message, FAQ, Catalog, MessageLog, Template
 
 async def create_tables():
     async with engine.begin() as conn:

@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from app.models import User, Contact, Campaign, Message, FAQ, Catalog, MessageLog
-from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate, CatalogCreate, CatalogUpdate, MessageLogCreate
+from app.models import User, Contact, Campaign, Message, FAQ, Catalog, MessageLog, Template
+from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate, CatalogCreate, CatalogUpdate, MessageLogCreate, TemplateCreate, TemplateUpdate
 
 # User CRUD
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -420,3 +420,56 @@ async def get_message_logs_stats(db: AsyncSession, owner_id: int) -> dict:
         "outgoing": outgoing or 0,
         "automation_rate": round((outgoing / total * 100) if total > 0 else 0, 2)
     }
+
+# Template CRUD
+async def create_template(db: AsyncSession, template: TemplateCreate, owner_id: int) -> Template:
+    """Create a new template"""
+    db_template = Template(**template.dict(), owner_id=owner_id)
+    db.add(db_template)
+    await db.commit()
+    await db.refresh(db_template)
+    return db_template
+
+async def get_templates(db: AsyncSession, owner_id: int) -> List[Template]:
+    """Get all templates for a specific owner"""
+    result = await db.execute(
+        select(Template)
+        .where(Template.owner_id == owner_id)
+        .order_by(Template.created_at.desc())
+    )
+    return result.scalars().all()
+
+async def get_template(db: AsyncSession, template_id: int, owner_id: int) -> Optional[Template]:
+    """Get a specific template"""
+    result = await db.execute(
+        select(Template)
+        .where(Template.id == template_id, Template.owner_id == owner_id)
+    )
+    return result.scalar_one_or_none()
+
+async def update_template(db: AsyncSession, template_id: int, owner_id: int, template_update: TemplateUpdate) -> Optional[Template]:
+    """Update a template"""
+    existing_template = await get_template(db, template_id, owner_id)
+    if not existing_template:
+        return None
+    
+    update_data = template_update.dict(exclude_unset=True)
+    if update_data:
+        await db.execute(
+            update(Template)
+            .where(Template.id == template_id, Template.owner_id == owner_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        await db.refresh(existing_template)
+    
+    return existing_template
+
+async def delete_template(db: AsyncSession, template_id: int, owner_id: int) -> bool:
+    """Delete a template"""
+    result = await db.execute(
+        delete(Template)
+        .where(Template.id == template_id, Template.owner_id == owner_id)
+    )
+    await db.commit()
+    return result.rowcount > 0
