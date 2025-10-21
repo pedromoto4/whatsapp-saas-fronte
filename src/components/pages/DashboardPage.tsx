@@ -6,6 +6,7 @@ import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import WhatsAppMessage from '@/components/WhatsAppMessage'
+import FAQManagement from '@/components/pages/FAQManagement'
 import { 
   Circle, 
   ChartBar, 
@@ -21,7 +22,7 @@ import {
   Phone
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -38,6 +39,7 @@ export default function DashboardPage() {
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
     { id: 'whatsapp' as const, label: 'WhatsApp', icon: Phone },
+    { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'automation' as const, label: 'Automação', icon: Circle },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
     { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
@@ -326,6 +328,9 @@ export default function DashboardPage() {
             }} />
           </div>
         )
+      
+      case 'faqs':
+        return <FAQManagement />
       
       case 'api-test':
         return (
