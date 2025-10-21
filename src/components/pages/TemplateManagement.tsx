@@ -349,7 +349,7 @@ export default function TemplateManagement() {
                   rows={6}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Use {'{{'} variável {'}'} para variáveis dinâmicas. Ex: {'{{'} nome {'}}'}, {'{{'} data {'}}'}}
+                  Use {'{{variável}}'} para variáveis dinâmicas. Ex: {'{{nome}}'}, {'{{data}}'}
                 </p>
               </div>
 
