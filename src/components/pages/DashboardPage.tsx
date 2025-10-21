@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import WhatsAppMessage from '@/components/WhatsAppMessage'
 import FAQManagement from '@/components/pages/FAQManagement'
 import CatalogManagement from '@/components/pages/CatalogManagement'
+import MessageLogsPage from '@/components/pages/MessageLogsPage'
 import { 
   Circle, 
   ChartBar, 
@@ -20,10 +21,11 @@ import {
   Bug,
   Check,
   X,
-  Phone
+  Phone,
+  ClockCounterClockwise
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs' | 'logs'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -43,6 +45,7 @@ export default function DashboardPage() {
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'automation' as const, label: 'Automação', icon: Circle },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
+    { id: 'logs' as const, label: 'Histórico', icon: ClockCounterClockwise },
     { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
     { id: 'api-test' as const, label: 'Teste API', icon: Bug },
   ]
@@ -335,6 +338,9 @@ export default function DashboardPage() {
       
       case 'catalog':
         return <CatalogManagement />
+      
+      case 'logs':
+        return <MessageLogsPage />
       
       case 'api-test':
         return (
