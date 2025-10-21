@@ -180,8 +180,8 @@ async def get_contact_by_phone(db: AsyncSession, phone_number: str) -> Optional[
     result = await db.execute(select(Contact).where(Contact.phone_number == phone_number))
     return result.scalar_one_or_none()
 
-async def create_contact(db: AsyncSession, contact_data: dict) -> Contact:
-    """Create a new contact"""
+async def create_contact_from_webhook(db: AsyncSession, contact_data: dict) -> Contact:
+    """Create a new contact from webhook data"""
     db_contact = Contact(**contact_data)
     db.add(db_contact)
     await db.commit()
