@@ -172,3 +172,148 @@ async def send_template_endpoint(
             detail=f"Failed to send template: {str(e)}"
         )
 
+@router.post("/{template_id}/submit", status_code=status.HTTP_200_OK)
+async def submit_template_for_approval(
+    template_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Submit a template to WhatsApp for approval"""
+    try:
+        # Get template
+        template = await get_template(db, template_id, current_user.id)
+        if not template:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        
+        # Check if already submitted
+        if template.status in ["pending", "approved"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Template is already {template.status}"
+            )
+        
+        # Build WhatsApp components
+        components = []
+        
+        # Add HEADER component if exists
+        if template.header_text:
+            components.append({
+                "type": "HEADER",
+                "format": "TEXT",
+                "text": template.header_text
+            })
+        
+        # Add BODY component (required)
+        body_text = template.body_text
+        
+        # Parse variables and replace with WhatsApp format
+        if template.variables:
+            try:
+                variables = json.loads(template.variables)
+                # Replace {{variable}} with {{1}}, {{2}}, etc. for WhatsApp
+                for i, var in enumerate(variables, start=1):
+                    body_text = body_text.replace(f"{{{{{var}}}}}", f"{{{{{i}}}}}")
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse variables: {template.variables}")
+        
+        components.append({
+            "type": "BODY",
+            "text": body_text
+        })
+        
+        # Add FOOTER component if exists
+        if template.footer_text:
+            components.append({
+                "type": "FOOTER",
+                "text": template.footer_text
+            })
+        
+        # Add BUTTONS component if exists
+        if template.buttons:
+            try:
+                buttons = json.loads(template.buttons)
+                if buttons:
+                    components.append({
+                        "type": "BUTTONS",
+                        "buttons": buttons
+                    })
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse buttons: {template.buttons}")
+        
+        # Submit to WhatsApp
+        result = await whatsapp_service.submit_template_for_approval(
+            name=template.name.lower().replace(" ", "_"),  # Ensure proper format
+            category=template.category,
+            language=template.language,
+            components=components
+        )
+        
+        # Update template status to pending
+        from app.schemas import TemplateUpdate
+        template_update = TemplateUpdate(
+            status="pending",
+            whatsapp_template_id=result.get("template_id")
+        )
+        await update_template(db, template_id, current_user.id, template_update)
+        
+        return {
+            "status": "success",
+            "message": result.get("message"),
+            "template_id": result.get("template_id"),
+            "template_name": template.name,
+            "note": "WhatsApp will review your template within 24-48 hours. You'll be notified of the approval status."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting template: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit template: {str(e)}"
+        )
+
+@router.get("/{template_id}/status", status_code=status.HTTP_200_OK)
+async def get_template_status_endpoint(
+    template_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get the current approval status of a template from WhatsApp"""
+    try:
+        # Get template from database
+        template = await get_template(db, template_id, current_user.id)
+        if not template:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        
+        if not template.whatsapp_template_id:
+            return {
+                "status": template.status,
+                "message": "Template not yet submitted to WhatsApp"
+            }
+        
+        # Get status from WhatsApp
+        whatsapp_status = await whatsapp_service.get_template_status(template.whatsapp_template_id)
+        
+        # Update local status if different
+        new_status = whatsapp_status.get("status", template.status)
+        if new_status != template.status:
+            from app.schemas import TemplateUpdate
+            template_update = TemplateUpdate(status=new_status)
+            await update_template(db, template_id, current_user.id, template_update)
+        
+        return {
+            "local_status": template.status,
+            "whatsapp_status": new_status,
+            "whatsapp_data": whatsapp_status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting template status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get template status: {str(e)}"
+        )
+
