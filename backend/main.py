@@ -31,16 +31,14 @@ app = FastAPI(
     version="1.0.1"  # Force rebuild without HTTPS redirect middleware
 )
 
-# CORS Configuration
-cors_origins = os.getenv("CORS_ORIGINS", "*")
-origins = ["*"] if cors_origins == "*" else [o.strip() for o in cors_origins.split(",")]
-
+# CORS Configuration - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=False if origins == ["*"] else True,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=False,  # Must be False when allow_origins is ["*"]
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Include API routers

@@ -12,7 +12,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
 from app.schemas import MessageCreate, MessageResponse, ContactResponse
 from app.whatsapp_service import whatsapp_service
-from app.crud import create_message, get_contact_by_phone, create_contact, match_faq_by_keywords, build_catalog_message, create_message_log
+from app.crud import create_message, get_contact_by_phone, create_contact_from_webhook, match_faq_by_keywords, build_catalog_message, create_message_log
 from app.schemas import MessageLogCreate
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ async def send_whatsapp_message(
                 "name": message_data.phone_number,  # Default name
                 "owner_id": current_user.id
             }
-            contact = await create_contact(db, contact_data)
+            contact = await create_contact_from_webhook(db, contact_data)
         
         # Send message via WhatsApp API
         response = await whatsapp_service.send_message(
@@ -116,7 +116,7 @@ async def send_template_message(
                 "name": to,
                 "owner_id": current_user.id
             }
-            contact = await create_contact(db, contact_data)
+            contact = await create_contact_from_webhook(db, contact_data)
         
         # Send template via WhatsApp API
         response = await whatsapp_service.send_template_message(
@@ -275,7 +275,7 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             "name": phone_number,
                             "owner_id": 1  # Default owner - should be improved
                         }
-                        contact = await create_contact(db, contact_data)
+                        contact = await create_contact_from_webhook(db, contact_data)
                     
                     # Process incoming message
                     message_text = msg["text"]
