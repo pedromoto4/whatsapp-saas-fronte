@@ -258,20 +258,29 @@ async def delete_faq(db: AsyncSession, faq_id: int, owner_id: int) -> bool:
 
 async def match_faq_by_keywords(db: AsyncSession, owner_id: int, text: str) -> Optional[FAQ]:
     """Find FAQ by matching keywords in text"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not text:
+        logger.info("No text provided for FAQ matching")
         return None
     
     # Normalize text (lowercase, remove accents)
     normalized_text = text.lower().strip()
+    logger.info(f"Matching FAQs for owner_id={owner_id}, normalized_text='{normalized_text}'")
     
     # Get all FAQs for user
     faqs = await get_faqs(db, owner_id)
+    logger.info(f"Found {len(faqs)} FAQs for owner_id={owner_id}")
     
     # Simple keyword matching
     for faq in faqs:
         if faq.keywords:
             keywords = [kw.strip().lower() for kw in faq.keywords.split(',')]
+            logger.info(f"Checking FAQ '{faq.question}' with keywords: {keywords}")
             if any(keyword in normalized_text for keyword in keywords):
+                logger.info(f"✅ Matched FAQ: '{faq.question}'")
                 return faq
     
+    logger.info("❌ No FAQ matched")
     return None

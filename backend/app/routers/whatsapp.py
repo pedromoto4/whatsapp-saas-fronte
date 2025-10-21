@@ -267,11 +267,15 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     
                     # Try to match FAQ
                     message_text = msg["text"]
+                    logger.info(f"Received message from {phone_number}: {message_text}")
+                    
                     matched_faq = await match_faq_by_keywords(db, contact.owner_id, message_text)
+                    logger.info(f"FAQ match result for '{message_text}': {matched_faq is not None}")
                     
                     if matched_faq:
                         # Send FAQ response
                         try:
+                            logger.info(f"Sending FAQ response: {matched_faq.answer}")
                             await whatsapp_service.send_message(
                                 to=phone_number,
                                 message=matched_faq.answer
@@ -279,6 +283,8 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             logger.info(f"FAQ response sent to {phone_number}: {matched_faq.question}")
                         except Exception as e:
                             logger.error(f"Failed to send FAQ response: {e}")
+                    else:
+                        logger.info(f"No FAQ matched for message: {message_text}")
                     
                     # Save incoming message
                     message_data = {
