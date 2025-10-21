@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from app.models import User, Contact, Campaign, Message
-from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate
+from app.models import User, Contact, Campaign, Message, FAQ
+from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate
 
 # User CRUD
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -204,3 +204,74 @@ async def get_messages_by_contact(db: AsyncSession, contact_id: int) -> List[Mes
         .order_by(Message.created_at.desc())
     )
     return result.scalars().all()
+
+# FAQ CRUD
+async def create_faq(db: AsyncSession, faq: FAQCreate, owner_id: int) -> FAQ:
+    """Create a new FAQ"""
+    db_faq = FAQ(**faq.dict(), owner_id=owner_id)
+    db.add(db_faq)
+    await db.commit()
+    await db.refresh(db_faq)
+    return db_faq
+
+async def get_faqs(db: AsyncSession, owner_id: int) -> List[FAQ]:
+    """Get all FAQs for a user"""
+    result = await db.execute(
+        select(FAQ)
+        .where(FAQ.owner_id == owner_id)
+        .order_by(FAQ.created_at.desc())
+    )
+    return result.scalars().all()
+
+async def get_faq(db: AsyncSession, faq_id: int, owner_id: int) -> Optional[FAQ]:
+    """Get a specific FAQ"""
+    result = await db.execute(
+        select(FAQ).where(FAQ.id == faq_id, FAQ.owner_id == owner_id)
+    )
+    return result.scalar_one_or_none()
+
+async def update_faq(db: AsyncSession, faq_id: int, owner_id: int, faq_update: FAQUpdate) -> Optional[FAQ]:
+    """Update a FAQ"""
+    existing_faq = await get_faq(db, faq_id, owner_id)
+    if not existing_faq:
+        return None
+    
+    update_data = faq_update.dict(exclude_unset=True)
+    if update_data:
+        await db.execute(
+            update(FAQ)
+            .where(FAQ.id == faq_id, FAQ.owner_id == owner_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        await db.refresh(existing_faq)
+    
+    return existing_faq
+
+async def delete_faq(db: AsyncSession, faq_id: int, owner_id: int) -> bool:
+    """Delete a FAQ"""
+    result = await db.execute(
+        delete(FAQ).where(FAQ.id == faq_id, FAQ.owner_id == owner_id)
+    )
+    await db.commit()
+    return result.rowcount > 0
+
+async def match_faq_by_keywords(db: AsyncSession, owner_id: int, text: str) -> Optional[FAQ]:
+    """Find FAQ by matching keywords in text"""
+    if not text:
+        return None
+    
+    # Normalize text (lowercase, remove accents)
+    normalized_text = text.lower().strip()
+    
+    # Get all FAQs for user
+    faqs = await get_faqs(db, owner_id)
+    
+    # Simple keyword matching
+    for faq in faqs:
+        if faq.keywords:
+            keywords = [kw.strip().lower() for kw in faq.keywords.split(',')]
+            if any(keyword in normalized_text for keyword in keywords):
+                return faq
+    
+    return None

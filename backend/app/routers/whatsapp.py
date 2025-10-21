@@ -12,7 +12,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
 from app.schemas import MessageCreate, MessageResponse, ContactResponse
 from app.whatsapp_service import whatsapp_service
-from app.crud import create_message, get_contact_by_phone, create_contact
+from app.crud import create_message, get_contact_by_phone, create_contact, match_faq_by_keywords
 
 logger = logging.getLogger(__name__)
 
@@ -264,6 +264,21 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             "owner_id": 1  # Default owner - should be improved
                         }
                         contact = await create_contact(db, contact_data)
+                    
+                    # Try to match FAQ
+                    message_text = msg["text"]
+                    matched_faq = await match_faq_by_keywords(db, contact.owner_id, message_text)
+                    
+                    if matched_faq:
+                        # Send FAQ response
+                        try:
+                            await whatsapp_service.send_message(
+                                to=phone_number,
+                                message=matched_faq.answer
+                            )
+                            logger.info(f"FAQ response sent to {phone_number}: {matched_faq.question}")
+                        except Exception as e:
+                            logger.error(f"Failed to send FAQ response: {e}")
                     
                     # Save incoming message
                     message_data = {
