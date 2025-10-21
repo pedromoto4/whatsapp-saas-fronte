@@ -38,8 +38,12 @@ export default function FAQManagement() {
 
   // Get auth token
   const getAuthToken = async () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    return user.idToken || 'demo-token'
+    const token = localStorage.getItem('firebase_token')
+    if (!token) {
+      toast.error('Token de autenticação não encontrado. Por favor, faça login novamente.')
+      return null
+    }
+    return token
   }
 
   // Load FAQs
@@ -47,6 +51,8 @@ export default function FAQManagement() {
     try {
       setLoading(true)
       const token = await getAuthToken()
+      if (!token) return
+      
       const response = await fetch(`${API_BASE_URL}/api/faqs/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -71,6 +77,8 @@ export default function FAQManagement() {
   const saveFaq = async () => {
     try {
       const token = await getAuthToken()
+      if (!token) return
+      
       const url = editingFaq 
         ? `${API_BASE_URL}/api/faqs/${editingFaq.id}`
         : `${API_BASE_URL}/api/faqs/`
@@ -105,6 +113,8 @@ export default function FAQManagement() {
 
     try {
       const token = await getAuthToken()
+      if (!token) return
+      
       const response = await fetch(`${API_BASE_URL}/api/faqs/${id}`, {
         method: 'DELETE',
         headers: {
