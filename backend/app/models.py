@@ -84,3 +84,17 @@ class FAQ(Base):
     
     # Relationships
     owner = relationship("User")
+
+class Catalog(Base):
+    __tablename__ = "catalog"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String, nullable=False)
+    price = Column(String, nullable=False)  # Guardamos como string para flexibilidade (€50, $100, etc)
+    image_url = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    owner = relationship("User")

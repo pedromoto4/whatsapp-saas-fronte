@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from app.models import User, Contact, Campaign, Message, FAQ
-from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate
+from app.models import User, Contact, Campaign, Message, FAQ, Catalog
+from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate, CatalogCreate, CatalogUpdate
 
 # User CRUD
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -284,3 +284,77 @@ async def match_faq_by_keywords(db: AsyncSession, owner_id: int, text: str) -> O
     
     logger.info("❌ No FAQ matched")
     return None
+
+# Catalog CRUD
+async def create_catalog_item(db: AsyncSession, item: CatalogCreate, owner_id: int) -> Catalog:
+    """Create a new catalog item"""
+    db_item = Catalog(**item.dict(), owner_id=owner_id)
+    db.add(db_item)
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+
+async def get_catalog_items(db: AsyncSession, owner_id: int) -> List[Catalog]:
+    """Get all catalog items for a user"""
+    result = await db.execute(
+        select(Catalog)
+        .where(Catalog.owner_id == owner_id)
+        .order_by(Catalog.created_at.desc())
+    )
+    return result.scalars().all()
+
+async def get_catalog_item(db: AsyncSession, item_id: int, owner_id: int) -> Optional[Catalog]:
+    """Get a specific catalog item"""
+    result = await db.execute(
+        select(Catalog).where(Catalog.id == item_id, Catalog.owner_id == owner_id)
+    )
+    return result.scalar_one_or_none()
+
+async def update_catalog_item(db: AsyncSession, item_id: int, owner_id: int, item_update: CatalogUpdate) -> Optional[Catalog]:
+    """Update a catalog item"""
+    existing_item = await get_catalog_item(db, item_id, owner_id)
+    if not existing_item:
+        return None
+    
+    update_data = item_update.dict(exclude_unset=True)
+    if update_data:
+        await db.execute(
+            update(Catalog)
+            .where(Catalog.id == item_id, Catalog.owner_id == owner_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        await db.refresh(existing_item)
+    
+    return existing_item
+
+async def delete_catalog_item(db: AsyncSession, item_id: int, owner_id: int) -> bool:
+    """Delete a catalog item"""
+    result = await db.execute(
+        delete(Catalog).where(Catalog.id == item_id, Catalog.owner_id == owner_id)
+    )
+    await db.commit()
+    return result.rowcount > 0
+
+async def build_catalog_message(db: AsyncSession, owner_id: int, limit: int = 5) -> str:
+    """Build a formatted catalog message"""
+    items = await get_catalog_items(db, owner_id)
+    
+    if not items:
+        return "Desculpe, ainda não temos produtos no catálogo."
+    
+    message = "📋 *Nosso Catálogo:*\n\n"
+    
+    for i, item in enumerate(items[:limit], 1):
+        message += f"{i}. *{item.name}*\n"
+        message += f"   💰 {item.price}\n"
+        if item.description:
+            message += f"   📝 {item.description}\n"
+        message += "\n"
+    
+    if len(items) > limit:
+        message += f"_...e mais {len(items) - limit} produtos!_\n\n"
+    
+    message += "Para mais informações, entre em contato conosco!"
+    
+    return message

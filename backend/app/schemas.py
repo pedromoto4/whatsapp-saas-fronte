@@ -153,6 +153,30 @@ class FAQResponse(FAQBase):
     class Config:
         from_attributes = True
 
+# Catalog Schemas
+class CatalogBase(BaseModel):
+    name: str
+    price: str
+    image_url: Optional[str] = None
+    description: Optional[str] = None
+
+class CatalogCreate(CatalogBase):
+    pass
+
+class CatalogUpdate(BaseModel):
+    name: Optional[str] = None
+    price: Optional[str] = None
+    image_url: Optional[str] = None
+    description: Optional[str] = None
+
+class CatalogResponse(CatalogBase):
+    id: int
+    owner_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 class WhatsAppWebhookData(BaseModel):
     entry: List[dict]
     object: str
