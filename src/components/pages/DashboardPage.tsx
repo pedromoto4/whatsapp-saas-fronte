@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import WhatsAppMessage from '@/components/WhatsAppMessage'
 import FAQManagement from '@/components/pages/FAQManagement'
+import CatalogManagement from '@/components/pages/CatalogManagement'
 import { 
   Circle, 
   ChartBar, 
@@ -331,6 +332,9 @@ export default function DashboardPage() {
       
       case 'faqs':
         return <FAQManagement />
+      
+      case 'catalog':
+        return <CatalogManagement />
       
       case 'api-test':
         return (

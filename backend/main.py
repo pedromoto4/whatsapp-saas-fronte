@@ -8,10 +8,10 @@ import os
 from dotenv import load_dotenv
 
 from app.database import create_tables
-from app.models import User, FAQ
+from app.models import User, FAQ, Catalog
 from app.schemas import UserResponse
 from app.dependencies import get_current_user, get_db
-from app.routers import contacts, campaigns, messages, whatsapp, faqs
+from app.routers import contacts, campaigns, messages, whatsapp, faqs, catalog
 
 load_dotenv()
 
@@ -48,6 +48,7 @@ app.include_router(contacts.router)
 app.include_router(campaigns.router)
 app.include_router(messages.router)
 app.include_router(faqs.router)
+app.include_router(catalog.router)
 app.include_router(whatsapp.router)
 
 @app.on_event("startup")

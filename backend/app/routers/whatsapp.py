@@ -12,7 +12,7 @@ from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
 from app.schemas import MessageCreate, MessageResponse, ContactResponse
 from app.whatsapp_service import whatsapp_service
-from app.crud import create_message, get_contact_by_phone, create_contact, match_faq_by_keywords
+from app.crud import create_message, get_contact_by_phone, create_contact, match_faq_by_keywords, build_catalog_message
 
 logger = logging.getLogger(__name__)
 
@@ -265,26 +265,45 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         }
                         contact = await create_contact(db, contact_data)
                     
-                    # Try to match FAQ
+                    # Process incoming message
                     message_text = msg["text"]
                     logger.info(f"Received message from {phone_number}: {message_text}")
                     
-                    matched_faq = await match_faq_by_keywords(db, contact.owner_id, message_text)
-                    logger.info(f"FAQ match result for '{message_text}': {matched_faq is not None}")
+                    normalized_text = message_text.lower().strip()
                     
-                    if matched_faq:
-                        # Send FAQ response
+                    # Check if it's a catalog request
+                    catalog_keywords = ["lista", "preços", "precos", "catálogo", "catalogo", "produtos", "menu"]
+                    is_catalog_request = any(keyword in normalized_text for keyword in catalog_keywords)
+                    
+                    if is_catalog_request:
+                        logger.info(f"Catalog request detected: {message_text}")
                         try:
-                            logger.info(f"Sending FAQ response: {matched_faq.answer}")
+                            catalog_message = await build_catalog_message(db, contact.owner_id)
                             await whatsapp_service.send_message(
                                 to=phone_number,
-                                message=matched_faq.answer
+                                message=catalog_message
                             )
-                            logger.info(f"FAQ response sent to {phone_number}: {matched_faq.question}")
+                            logger.info(f"Catalog sent to {phone_number}")
                         except Exception as e:
-                            logger.error(f"Failed to send FAQ response: {e}")
+                            logger.error(f"Failed to send catalog: {e}")
                     else:
-                        logger.info(f"No FAQ matched for message: {message_text}")
+                        # Try to match FAQ
+                        matched_faq = await match_faq_by_keywords(db, contact.owner_id, message_text)
+                        logger.info(f"FAQ match result for '{message_text}': {matched_faq is not None}")
+                        
+                        if matched_faq:
+                            # Send FAQ response
+                            try:
+                                logger.info(f"Sending FAQ response: {matched_faq.answer}")
+                                await whatsapp_service.send_message(
+                                    to=phone_number,
+                                    message=matched_faq.answer
+                                )
+                                logger.info(f"FAQ response sent to {phone_number}: {matched_faq.question}")
+                            except Exception as e:
+                                logger.error(f"Failed to send FAQ response: {e}")
+                        else:
+                            logger.info(f"No FAQ or catalog matched for message: {message_text}")
                     
                     # Save incoming message
                     message_data = {
