@@ -71,3 +71,16 @@ class Message(Base):
     # Relationships
     contact = relationship("Contact", back_populates="messages")
     campaign = relationship("Campaign", back_populates="messages")
+
+class FAQ(Base):
+    __tablename__ = "faqs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"))
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    keywords = Column(Text, nullable=True)  # keywords separadas por vírgula
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    owner = relationship("User")

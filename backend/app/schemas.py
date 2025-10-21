@@ -131,6 +131,28 @@ class WhatsAppTemplate(BaseModel):
     language: str
     components: List[dict]
 
+# FAQ Schemas
+class FAQBase(BaseModel):
+    question: str
+    answer: str
+    keywords: Optional[str] = None
+
+class FAQCreate(FAQBase):
+    pass
+
+class FAQUpdate(BaseModel):
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    keywords: Optional[str] = None
+
+class FAQResponse(FAQBase):
+    id: int
+    owner_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 class WhatsAppWebhookData(BaseModel):
     entry: List[dict]
     object: str
