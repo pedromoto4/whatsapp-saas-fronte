@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, Edit, Trash, Question } from '@phosphor-icons/react'
+import { Plus, PencilSimple, Trash, Question } from '@phosphor-icons/react'
 
 interface FAQ {
   id: number
@@ -202,7 +202,7 @@ export default function FAQManagement() {
                       size="sm"
                       onClick={() => openEditDialog(faq)}
                     >
-                      <Edit size={16} />
+                      <PencilSimple size={16} />
                     </Button>
                     <Button
                       variant="outline"
