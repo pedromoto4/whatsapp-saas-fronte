@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Plus, PencilSimple, Trash, FileText, CheckCircle, Clock, XCircle, PaperPlane } from '@phosphor-icons/react'
+import { Plus, PencilSimple, Trash, FileText, CheckCircle, Clock, XCircle, PaperPlane, CloudArrowUp } from '@phosphor-icons/react'
 
 interface Template {
   id: number
@@ -183,6 +183,35 @@ export default function TemplateManagement() {
       } else {
         const error = await response.json()
         toast.error(error.detail || 'Erro ao enviar template')
+      }
+    } catch (error) {
+      toast.error('Erro de conexão')
+    }
+  }
+
+  const submitTemplateForApproval = async (template: Template) => {
+    if (!confirm(`Submeter template "${template.name}" para aprovação do WhatsApp?\n\nO template será revisado em 24-48 horas.`)) return
+
+    try {
+      const token = await getAuthToken()
+      if (!token) return
+
+      const response = await fetch(`${API_BASE_URL}/api/templates/${template.id}/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message || 'Template submetido para aprovação!')
+        toast.info(data.note || 'WhatsApp revisará em 24-48 horas')
+        loadTemplates()
+      } else {
+        const error = await response.json()
+        toast.error(error.detail || 'Erro ao submeter template')
       }
     } catch (error) {
       toast.error('Erro de conexão')
@@ -486,30 +515,48 @@ export default function TemplateManagement() {
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => openSendDialog(template)}
-                  >
-                    <PaperPlane size={16} className="mr-1" />
-                    Enviar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEditDialog(template)}
-                  >
-                    <PencilSimple size={16} />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => deleteTemplate(template.id)}
-                  >
-                    <Trash size={16} />
-                  </Button>
+                <div className="space-y-2 pt-2">
+                  {/* Submit for approval button - only for draft templates */}
+                  {template.status === 'draft' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => submitTemplateForApproval(template)}
+                    >
+                      <CloudArrowUp size={16} className="mr-2" />
+                      Submeter para Aprovação WhatsApp
+                    </Button>
+                  )}
+                  
+                  {/* Action buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => openSendDialog(template)}
+                    >
+                      <PaperPlane size={16} className="mr-1" />
+                      Enviar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditDialog(template)}
+                      disabled={template.status === 'pending'}
+                    >
+                      <PencilSimple size={16} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteTemplate(template.id)}
+                      disabled={template.status === 'approved'}
+                    >
+                      <Trash size={16} />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

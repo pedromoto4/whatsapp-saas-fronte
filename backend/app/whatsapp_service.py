@@ -271,6 +271,114 @@ class WhatsAppService:
             True if configured, False otherwise
         """
         return bool(self.access_token and self.phone_number_id)
+    
+    async def submit_template_for_approval(
+        self, 
+        name: str,
+        category: str,
+        language: str,
+        components: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Submit a message template to WhatsApp for approval
+        
+        Args:
+            name: Template name (lowercase, no spaces, use underscores)
+            category: MARKETING, UTILITY, or AUTHENTICATION
+            language: Language code (e.g., pt_BR, en, es)
+            components: List of template components (header, body, footer, buttons)
+        
+        Returns:
+            Dict with API response including template ID
+        
+        References:
+            https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates
+        """
+        if not self.access_token:
+            raise Exception("WhatsApp access token not configured")
+        
+        # Get WhatsApp Business Account ID from environment
+        waba_id = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
+        if not waba_id:
+            raise Exception("WHATSAPP_BUSINESS_ACCOUNT_ID not configured. Get it from Meta Business Manager.")
+        
+        url = f"{self.base_url}/{waba_id}/message_templates"
+        
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "name": name,
+            "category": category,
+            "language": language,
+            "components": components
+        }
+        
+        logger.info(f"Submitting template '{name}' for approval to WhatsApp")
+        logger.debug(f"Template payload: {json.dumps(payload, indent=2)}")
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                
+                logger.info(f"WhatsApp Template API Response Status: {response.status_code}")
+                logger.info(f"WhatsApp Template API Response Body: {response.text}")
+                
+                response.raise_for_status()
+                response_data = response.json()
+                
+                return {
+                    "status": "success",
+                    "template_id": response_data.get("id"),
+                    "template_name": name,
+                    "category": category,
+                    "message": "Template submitted for approval. It will be reviewed by WhatsApp within 24-48 hours."
+                }
+                
+        except httpx.HTTPError as e:
+            logger.error(f"WhatsApp Template API error: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Error response: {e.response.text}")
+                try:
+                    error_data = e.response.json()
+                    error_message = error_data.get("error", {}).get("message", str(e))
+                    error_code = error_data.get("error", {}).get("code", "unknown")
+                    logger.error(f"Error code: {error_code}, Message: {error_message}")
+                    raise Exception(f"WhatsApp API Error: {error_message}")
+                except:
+                    raise Exception(f"Failed to submit template: {str(e)}")
+            raise Exception(f"Failed to submit template: {str(e)}")
+    
+    async def get_template_status(self, template_id: str) -> Dict[str, Any]:
+        """
+        Get the current status of a template from WhatsApp
+        
+        Args:
+            template_id: WhatsApp template ID
+        
+        Returns:
+            Dict with template status information
+        """
+        if not self.access_token:
+            raise Exception("WhatsApp access token not configured")
+        
+        url = f"{self.base_url}/{template_id}"
+        
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to get template status: {e}")
+            raise Exception(f"Failed to get template status: {str(e)}")
 
 # Global instance
 whatsapp_service = WhatsAppService()
