@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 
 from app.database import create_tables
-from app.models import User
+from app.models import User, FAQ
 from app.schemas import UserResponse
 from app.dependencies import get_current_user, get_db
 from app.routers import contacts, campaigns, messages, whatsapp, faqs
