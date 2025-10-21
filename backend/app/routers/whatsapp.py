@@ -12,7 +12,8 @@ from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
 from app.schemas import MessageCreate, MessageResponse, ContactResponse
 from app.whatsapp_service import whatsapp_service
-from app.crud import create_message, get_contact_by_phone, create_contact, match_faq_by_keywords, build_catalog_message
+from app.crud import create_message, get_contact_by_phone, create_contact, match_faq_by_keywords, build_catalog_message, create_message_log
+from app.schemas import MessageLogCreate
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,17 @@ async def send_whatsapp_message(
             message_data_dict["campaign_id"] = message_data.campaign_id
         
         message = await create_message(db, message_data_dict)
+        
+        # Log outgoing message
+        log_data = MessageLogCreate(
+            owner_id=current_user.id,
+            direction="out",
+            kind="text",
+            to_from=message_data.phone_number,
+            content=message_data.content,
+            cost_estimate="0.005"
+        )
+        await create_message_log(db, log_data)
         
         return {
             "success": True,
@@ -284,6 +296,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                 message=catalog_message
                             )
                             logger.info(f"Catalog sent to {phone_number}")
+                            
+                            # Log outgoing catalog message
+                            out_log = MessageLogCreate(
+                                owner_id=contact.owner_id,
+                                direction="out",
+                                kind="text",
+                                to_from=phone_number,
+                                content=catalog_message,
+                                cost_estimate="0.005"  # Estimativa de custo
+                            )
+                            await create_message_log(db, out_log)
                         except Exception as e:
                             logger.error(f"Failed to send catalog: {e}")
                     else:
@@ -300,6 +323,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                     message=matched_faq.answer
                                 )
                                 logger.info(f"FAQ response sent to {phone_number}: {matched_faq.question}")
+                                
+                                # Log outgoing FAQ message
+                                out_log = MessageLogCreate(
+                                    owner_id=contact.owner_id,
+                                    direction="out",
+                                    kind="text",
+                                    to_from=phone_number,
+                                    content=matched_faq.answer,
+                                    cost_estimate="0.005"
+                                )
+                                await create_message_log(db, out_log)
                             except Exception as e:
                                 logger.error(f"Failed to send FAQ response: {e}")
                         else:
@@ -312,6 +346,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         "status": "received"
                     }
                     await create_message(db, message_data)
+                    
+                    # Log incoming message
+                    log_data = MessageLogCreate(
+                        owner_id=contact.owner_id,
+                        direction="in",
+                        kind="text",
+                        to_from=phone_number,
+                        content=message_text,
+                        cost_estimate="0.00"
+                    )
+                    await create_message_log(db, log_data)
         
         return {"status": "ok"}
         
