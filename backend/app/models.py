@@ -98,3 +98,19 @@ class Catalog(Base):
     
     # Relationships
     owner = relationship("User")
+
+class MessageLog(Base):
+    __tablename__ = "message_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"))
+    direction = Column(String, nullable=False)  # 'in' ou 'out'
+    kind = Column(String, nullable=False)  # 'text', 'template', 'media'
+    to_from = Column(String, nullable=False)  # número de telefone
+    content = Column(Text, nullable=True)  # conteúdo da mensagem
+    template_name = Column(String, nullable=True)  # nome do template (se aplicável)
+    cost_estimate = Column(String, default="0.00")  # custo estimado
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    owner = relationship("User")

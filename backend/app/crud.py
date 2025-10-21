@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from app.models import User, Contact, Campaign, Message, FAQ, Catalog
-from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate, CatalogCreate, CatalogUpdate
+from app.models import User, Contact, Campaign, Message, FAQ, Catalog, MessageLog
+from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate, CatalogCreate, CatalogUpdate, MessageLogCreate
 
 # User CRUD
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -358,3 +358,65 @@ async def build_catalog_message(db: AsyncSession, owner_id: int, limit: int = 5)
     message += "Para mais informações, entre em contato conosco!"
     
     return message
+
+# MessageLog CRUD
+async def create_message_log(db: AsyncSession, log_data: MessageLogCreate) -> MessageLog:
+    """Create a new message log entry"""
+    db_log = MessageLog(**log_data.dict())
+    db.add(db_log)
+    await db.commit()
+    await db.refresh(db_log)
+    return db_log
+
+async def get_message_logs(db: AsyncSession, owner_id: int, limit: int = 100, offset: int = 0) -> List[MessageLog]:
+    """Get message logs for a user"""
+    result = await db.execute(
+        select(MessageLog)
+        .where(MessageLog.owner_id == owner_id)
+        .order_by(MessageLog.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return result.scalars().all()
+
+async def get_message_logs_by_phone(db: AsyncSession, owner_id: int, phone_number: str, limit: int = 50) -> List[MessageLog]:
+    """Get message logs for a specific phone number"""
+    result = await db.execute(
+        select(MessageLog)
+        .where(MessageLog.owner_id == owner_id, MessageLog.to_from == phone_number)
+        .order_by(MessageLog.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+async def get_message_logs_stats(db: AsyncSession, owner_id: int) -> dict:
+    """Get statistics about message logs"""
+    from sqlalchemy import func
+    
+    # Total messages
+    total_result = await db.execute(
+        select(func.count(MessageLog.id))
+        .where(MessageLog.owner_id == owner_id)
+    )
+    total = total_result.scalar()
+    
+    # Incoming messages
+    incoming_result = await db.execute(
+        select(func.count(MessageLog.id))
+        .where(MessageLog.owner_id == owner_id, MessageLog.direction == 'in')
+    )
+    incoming = incoming_result.scalar()
+    
+    # Outgoing messages
+    outgoing_result = await db.execute(
+        select(func.count(MessageLog.id))
+        .where(MessageLog.owner_id == owner_id, MessageLog.direction == 'out')
+    )
+    outgoing = outgoing_result.scalar()
+    
+    return {
+        "total": total or 0,
+        "incoming": incoming or 0,
+        "outgoing": outgoing or 0,
+        "automation_rate": round((outgoing / total * 100) if total > 0 else 0, 2)
+    }

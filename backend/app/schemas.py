@@ -177,6 +177,30 @@ class CatalogResponse(CatalogBase):
     class Config:
         from_attributes = True
 
+# MessageLog Schemas
+class MessageLogCreate(BaseModel):
+    owner_id: int
+    direction: str  # 'in' or 'out'
+    kind: str  # 'text', 'template', 'media'
+    to_from: str
+    content: Optional[str] = None
+    template_name: Optional[str] = None
+    cost_estimate: Optional[str] = "0.00"
+
+class MessageLogResponse(BaseModel):
+    id: int
+    owner_id: int
+    direction: str
+    kind: str
+    to_from: str
+    content: Optional[str]
+    template_name: Optional[str]
+    cost_estimate: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 class WhatsAppWebhookData(BaseModel):
     entry: List[dict]
     object: str
