@@ -114,3 +114,34 @@ class MessageLog(Base):
     
     # Relationships
     owner = relationship("User")
+
+class Template(Base):
+    __tablename__ = "templates"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String, nullable=False)  # Nome interno do template
+    category = Column(String, nullable=False)  # MARKETING, UTILITY, AUTHENTICATION
+    language = Column(String, default="pt_BR")  # Código de idioma
+    status = Column(String, default="draft")  # draft, pending, approved, rejected
+    
+    # Template content
+    header_text = Column(Text, nullable=True)  # Cabeçalho (opcional)
+    body_text = Column(Text, nullable=False)  # Corpo da mensagem (obrigatório)
+    footer_text = Column(Text, nullable=True)  # Rodapé (opcional)
+    
+    # Buttons (JSON string)
+    buttons = Column(Text, nullable=True)  # JSON com botões [{"type": "URL", "text": "Ver Site", "url": "..."}]
+    
+    # Variables
+    variables = Column(Text, nullable=True)  # JSON com variáveis: ["nome", "data", "valor"]
+    
+    # WhatsApp metadata
+    whatsapp_template_id = Column(String, nullable=True)  # ID retornado pelo WhatsApp após aprovação
+    rejection_reason = Column(Text, nullable=True)  # Motivo de rejeição (se aplicável)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owner = relationship("User")

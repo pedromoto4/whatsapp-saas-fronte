@@ -209,3 +209,47 @@ class WhatsAppStatusResponse(BaseModel):
     configured: bool
     service: str
     demo_mode: bool
+
+# Template Schemas
+class TemplateBase(BaseModel):
+    name: str
+    category: str  # MARKETING, UTILITY, AUTHENTICATION
+    language: Optional[str] = "pt_BR"
+    header_text: Optional[str] = None
+    body_text: str
+    footer_text: Optional[str] = None
+    buttons: Optional[str] = None  # JSON string
+    variables: Optional[str] = None  # JSON string
+
+class TemplateCreate(TemplateBase):
+    pass
+
+class TemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    language: Optional[str] = None
+    header_text: Optional[str] = None
+    body_text: Optional[str] = None
+    footer_text: Optional[str] = None
+    buttons: Optional[str] = None
+    variables: Optional[str] = None
+    status: Optional[str] = None
+    whatsapp_template_id: Optional[str] = None
+    rejection_reason: Optional[str] = None
+
+class TemplateResponse(TemplateBase):
+    id: int
+    owner_id: int
+    status: str
+    whatsapp_template_id: Optional[str]
+    rejection_reason: Optional[str]
+    created_at: datetime
+    updated_at: Optional[datetime]
+    
+    class Config:
+        from_attributes = True
+
+class TemplateSendRequest(BaseModel):
+    template_id: int
+    to: str  # Phone number
+    variables: Optional[dict] = None  # {"nome": "João", "data": "25/10/2024"}
