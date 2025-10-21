@@ -9,6 +9,7 @@ import WhatsAppMessage from '@/components/WhatsAppMessage'
 import FAQManagement from '@/components/pages/FAQManagement'
 import CatalogManagement from '@/components/pages/CatalogManagement'
 import MessageLogsPage from '@/components/pages/MessageLogsPage'
+import ContactsManagement from '@/components/pages/ContactsManagement'
 import { 
   Circle, 
   ChartBar, 
@@ -25,7 +26,7 @@ import {
   ClockCounterClockwise
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs' | 'logs'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs' | 'logs' | 'contacts'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
     { id: 'whatsapp' as const, label: 'WhatsApp', icon: Phone },
+    { id: 'contacts' as const, label: 'Contatos', icon: Users },
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'automation' as const, label: 'Automação', icon: Circle },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
@@ -341,6 +343,9 @@ export default function DashboardPage() {
       
       case 'logs':
         return <MessageLogsPage />
+      
+      case 'contacts':
+        return <ContactsManagement />
       
       case 'api-test':
         return (
