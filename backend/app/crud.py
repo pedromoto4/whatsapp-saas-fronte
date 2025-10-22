@@ -478,15 +478,54 @@ async def delete_template(db: AsyncSession, template_id: int, owner_id: int) -> 
 async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
     """Get all conversations grouped by phone number with last message"""
     from sqlalchemy import func, desc, and_
+    from sqlalchemy.exc import ProgrammingError
     
     try:
-        # Get all messages for the user
-        all_messages_result = await db.execute(
-            select(MessageLog)
-            .where(MessageLog.owner_id == owner_id)
-            .order_by(MessageLog.created_at.desc())
-        )
-        all_messages = all_messages_result.scalars().all()
+        # Try to get all messages (with is_automated if column exists)
+        try:
+            all_messages_result = await db.execute(
+                select(MessageLog)
+                .where(MessageLog.owner_id == owner_id)
+                .order_by(MessageLog.created_at.desc())
+            )
+            all_messages = all_messages_result.scalars().all()
+            has_is_automated = True
+        except ProgrammingError:
+            # Column is_automated doesn't exist yet, use alternative query
+            # Select only existing columns
+            from sqlalchemy import column
+            all_messages_result = await db.execute(
+                select(
+                    MessageLog.id,
+                    MessageLog.owner_id,
+                    MessageLog.direction,
+                    MessageLog.kind,
+                    MessageLog.to_from,
+                    MessageLog.content,
+                    MessageLog.template_name,
+                    MessageLog.cost_estimate,
+                    MessageLog.created_at
+                )
+                .where(MessageLog.owner_id == owner_id)
+                .order_by(MessageLog.created_at.desc())
+            )
+            # Convert rows to dict-like objects
+            all_messages = []
+            for row in all_messages_result:
+                msg = type('MessageLog', (), {
+                    'id': row.id,
+                    'owner_id': row.owner_id,
+                    'direction': row.direction,
+                    'kind': row.kind,
+                    'to_from': row.to_from,
+                    'content': row.content,
+                    'template_name': row.template_name,
+                    'cost_estimate': row.cost_estimate,
+                    'created_at': row.created_at,
+                    'is_automated': False  # Default value when column doesn't exist
+                })()
+                all_messages.append(msg)
+            has_is_automated = False
         
         # Group by phone number and get latest message
         phone_to_latest = {}
@@ -525,14 +564,55 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
         logger.error(f"Error getting conversations: {e}")
         return []
 
-async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_number: str) -> List[MessageLog]:
+async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_number: str) -> List:
     """Get all messages for a specific conversation"""
-    result = await db.execute(
-        select(MessageLog)
-        .where(
-            MessageLog.owner_id == owner_id,
-            MessageLog.to_from == phone_number
+    from sqlalchemy.exc import ProgrammingError
+    
+    try:
+        # Try with is_automated column
+        result = await db.execute(
+            select(MessageLog)
+            .where(
+                MessageLog.owner_id == owner_id,
+                MessageLog.to_from == phone_number
+            )
+            .order_by(MessageLog.created_at.asc())
         )
-        .order_by(MessageLog.created_at.asc())
-    )
-    return result.scalars().all()
+        return result.scalars().all()
+    except ProgrammingError:
+        # Column doesn't exist, select without it
+        result = await db.execute(
+            select(
+                MessageLog.id,
+                MessageLog.owner_id,
+                MessageLog.direction,
+                MessageLog.kind,
+                MessageLog.to_from,
+                MessageLog.content,
+                MessageLog.template_name,
+                MessageLog.cost_estimate,
+                MessageLog.created_at
+            )
+            .where(
+                MessageLog.owner_id == owner_id,
+                MessageLog.to_from == phone_number
+            )
+            .order_by(MessageLog.created_at.asc())
+        )
+        # Convert to objects with is_automated = False
+        messages = []
+        for row in result:
+            msg = type('MessageLog', (), {
+                'id': row.id,
+                'owner_id': row.owner_id,
+                'direction': row.direction,
+                'kind': row.kind,
+                'to_from': row.to_from,
+                'content': row.content,
+                'template_name': row.template_name,
+                'cost_estimate': row.cost_estimate,
+                'created_at': row.created_at,
+                'is_automated': False
+            })()
+            messages.append(msg)
+        return messages
