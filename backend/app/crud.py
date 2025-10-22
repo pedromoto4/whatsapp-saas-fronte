@@ -362,7 +362,21 @@ async def build_catalog_message(db: AsyncSession, owner_id: int, limit: int = 5)
 # MessageLog CRUD
 async def create_message_log(db: AsyncSession, log_data: MessageLogCreate) -> MessageLog:
     """Create a new message log entry"""
-    db_log = MessageLog(**log_data.dict())
+    from sqlalchemy import text
+    
+    # Check if is_automated column exists
+    check_result = await db.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='message_logs' AND column_name='is_automated'"
+    ))
+    has_is_automated_column = check_result.fetchone() is not None
+    
+    # Convert to dict and remove is_automated if column doesn't exist
+    log_dict = log_data.dict()
+    if not has_is_automated_column and 'is_automated' in log_dict:
+        log_dict.pop('is_automated')
+    
+    db_log = MessageLog(**log_dict)
     db.add(db_log)
     await db.commit()
     await db.refresh(db_log)
