@@ -477,52 +477,53 @@ async def delete_template(db: AsyncSession, template_id: int, owner_id: int) -> 
 # Conversations CRUD
 async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
     """Get all conversations grouped by phone number with last message"""
-    from sqlalchemy import func, desc
+    from sqlalchemy import func, desc, and_
     
-    # Subquery to get the latest message for each phone number
-    subquery = (
-        select(
-            MessageLog.to_from,
-            func.max(MessageLog.created_at).label('last_time')
+    try:
+        # Get all messages for the user
+        all_messages_result = await db.execute(
+            select(MessageLog)
+            .where(MessageLog.owner_id == owner_id)
+            .order_by(MessageLog.created_at.desc())
         )
-        .where(MessageLog.owner_id == owner_id)
-        .group_by(MessageLog.to_from)
-        .subquery()
-    )
-    
-    # Get the latest message for each conversation
-    result = await db.execute(
-        select(MessageLog)
-        .join(subquery, and_(
-            MessageLog.to_from == subquery.c.to_from,
-            MessageLog.created_at == subquery.c.last_time
-        ))
-        .where(MessageLog.owner_id == owner_id)
-        .order_by(desc(MessageLog.created_at))
-    )
-    
-    latest_messages = result.scalars().all()
-    
-    conversations = []
-    for msg in latest_messages:
-        # Try to find contact name
-        contact = await get_contact_by_phone(db, msg.to_from)
-        contact_name = contact.name if contact else None
+        all_messages = all_messages_result.scalars().all()
         
-        # Check if last message was automated (has template_name or came from FAQ/Catalog)
-        is_automated = bool(msg.template_name) or (msg.direction == 'out' and msg.kind == 'text')
+        # Group by phone number and get latest message
+        phone_to_latest = {}
+        for msg in all_messages:
+            if msg.to_from not in phone_to_latest:
+                phone_to_latest[msg.to_from] = msg
         
-        conversations.append({
-            'phone_number': msg.to_from,
-            'contact_name': contact_name,
-            'last_message': msg.content or f"[Template: {msg.template_name}]",
-            'last_message_time': msg.created_at,
-            'direction': msg.direction,
-            'unread_count': 0,  # TODO: Implement unread tracking
-            'is_automated': is_automated
-        })
-    
-    return conversations
+        # Build conversations list
+        conversations = []
+        for phone_number, msg in phone_to_latest.items():
+            # Try to find contact name
+            contact = await get_contact_by_phone(db, phone_number)
+            contact_name = contact.name if contact else None
+            
+            # Check if last message was automated
+            is_automated = bool(msg.template_name) or (msg.direction == 'out' and msg.kind == 'text')
+            
+            conversations.append({
+                'phone_number': phone_number,
+                'contact_name': contact_name,
+                'last_message': msg.content or f"[Template: {msg.template_name}]",
+                'last_message_time': msg.created_at,
+                'direction': msg.direction,
+                'unread_count': 0,
+                'is_automated': is_automated
+            })
+        
+        # Sort by last message time (most recent first)
+        conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
+        
+        return conversations
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting conversations: {e}")
+        return []
 
 async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_number: str) -> List[MessageLog]:
     """Get all messages for a specific conversation"""
