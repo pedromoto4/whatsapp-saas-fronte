@@ -473,3 +473,65 @@ async def delete_template(db: AsyncSession, template_id: int, owner_id: int) -> 
     )
     await db.commit()
     return result.rowcount > 0
+
+# Conversations CRUD
+async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
+    """Get all conversations grouped by phone number with last message"""
+    from sqlalchemy import func, desc
+    
+    # Subquery to get the latest message for each phone number
+    subquery = (
+        select(
+            MessageLog.to_from,
+            func.max(MessageLog.created_at).label('last_time')
+        )
+        .where(MessageLog.owner_id == owner_id)
+        .group_by(MessageLog.to_from)
+        .subquery()
+    )
+    
+    # Get the latest message for each conversation
+    result = await db.execute(
+        select(MessageLog)
+        .join(subquery, and_(
+            MessageLog.to_from == subquery.c.to_from,
+            MessageLog.created_at == subquery.c.last_time
+        ))
+        .where(MessageLog.owner_id == owner_id)
+        .order_by(desc(MessageLog.created_at))
+    )
+    
+    latest_messages = result.scalars().all()
+    
+    conversations = []
+    for msg in latest_messages:
+        # Try to find contact name
+        contact = await get_contact_by_phone(db, msg.to_from)
+        contact_name = contact.name if contact else None
+        
+        # Check if last message was automated (has template_name or came from FAQ/Catalog)
+        is_automated = bool(msg.template_name) or (msg.direction == 'out' and msg.kind == 'text')
+        
+        conversations.append({
+            'phone_number': msg.to_from,
+            'contact_name': contact_name,
+            'last_message': msg.content or f"[Template: {msg.template_name}]",
+            'last_message_time': msg.created_at,
+            'direction': msg.direction,
+            'unread_count': 0,  # TODO: Implement unread tracking
+            'is_automated': is_automated
+        })
+    
+    return conversations
+
+async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_number: str) -> List[MessageLog]:
+    """Get all messages for a specific conversation"""
+    result = await db.execute(
+        select(MessageLog)
+        .where(
+            MessageLog.owner_id == owner_id,
+            MessageLog.to_from == phone_number
+        )
+        .order_by(MessageLog.created_at.asc())
+    )
+    return result.scalars().all()

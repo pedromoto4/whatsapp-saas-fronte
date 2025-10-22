@@ -253,3 +253,28 @@ class TemplateSendRequest(BaseModel):
     template_id: int
     to: str  # Phone number
     variables: Optional[dict] = None  # {"nome": "João", "data": "25/10/2024"}
+
+# Conversations Schemas
+class ConversationResponse(BaseModel):
+    phone_number: str
+    contact_name: Optional[str] = None
+    last_message: str
+    last_message_time: datetime
+    direction: str  # in/out
+    unread_count: int = 0
+    is_automated: bool = False
+    
+class ConversationMessageResponse(BaseModel):
+    id: int
+    direction: str  # in/out
+    content: Optional[str]
+    kind: str  # text/template
+    template_name: Optional[str]
+    created_at: datetime
+    is_automated: bool = False
+    
+    class Config:
+        from_attributes = True
+
+class MessageSendRequest(BaseModel):
+    content: str

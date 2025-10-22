@@ -1,0 +1,189 @@
+import { useState, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { PaperPlaneRight, Robot, User as UserIcon } from '@phosphor-icons/react'
+import type { Conversation, Message } from './ConversationsPage'
+
+interface ChatWindowProps {
+  conversation?: Conversation
+  messages: Message[]
+  onSendMessage: (content: string) => Promise<void>
+  loading: boolean
+}
+
+export default function ChatWindow({
+  conversation,
+  messages,
+  onSendMessage,
+  loading
+}: ChatWindowProps) {
+  const [newMessage, setNewMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || sending) return
+
+    setSending(true)
+    try {
+      await onSendMessage(newMessage)
+      setNewMessage('')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const getInitials = (name?: string) => {
+    if (!name) return '?'
+    const parts = name.split(' ')
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    }
+    return name.substring(0, 2).toUpperCase()
+  }
+
+  if (!conversation) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-muted/20">
+        <UserIcon size={64} className="text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Selecione uma conversa</h3>
+        <p className="text-sm text-muted-foreground">
+          Escolha uma conversa à esquerda para começar
+        </p>
+      </div>
+    )
+  }
+
+  const displayName = conversation.contact_name || conversation.phone_number
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 border-b bg-background">
+        <Avatar className="h-10 w-10">
+          <AvatarFallback className="bg-primary/10 text-primary">
+            {getInitials(conversation.contact_name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <h3 className="font-semibold">{displayName}</h3>
+          <p className="text-sm text-muted-foreground">{conversation.phone_number}</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">Carregando mensagens...</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">Nenhuma mensagem ainda</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message) => {
+              const isIncoming = message.direction === 'in'
+              const content = message.content || `[Template: ${message.template_name}]`
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isIncoming ? 'justify-start' : 'justify-end'}`}
+                >
+                  <div
+                    className={`
+                      max-w-[70%] rounded-lg px-4 py-2 
+                      ${isIncoming 
+                        ? 'bg-muted' 
+                        : 'bg-primary text-primary-foreground'
+                      }
+                    `}
+                  >
+                    <div className="flex items-start gap-2 mb-1">
+                      <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-end gap-2 mt-1">
+                      {message.is_automated && !isIncoming && (
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${isIncoming ? '' : 'bg-primary-foreground/20 text-primary-foreground'}`}
+                        >
+                          <Robot size={10} className="mr-1" />
+                          Auto
+                        </Badge>
+                      )}
+                      {message.template_name && (
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${isIncoming ? '' : 'border-primary-foreground/20 text-primary-foreground'}`}
+                        >
+                          Template
+                        </Badge>
+                      )}
+                      <span 
+                        className={`text-xs ${isIncoming ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}
+                      >
+                        {formatTime(message.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            <div ref={scrollRef} />
+          </div>
+        )}
+      </ScrollArea>
+
+      {/* Input */}
+      <div className="p-4 border-t bg-background">
+        <div className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Digite uma mensagem..."
+            disabled={sending}
+            className="flex-1"
+          />
+          <Button 
+            onClick={handleSend} 
+            disabled={!newMessage.trim() || sending}
+            size="icon"
+          >
+            <PaperPlaneRight size={20} />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Pressione Enter para enviar
+        </p>
+      </div>
+    </div>
+  )
+}
+
