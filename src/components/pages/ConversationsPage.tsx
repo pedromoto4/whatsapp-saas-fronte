@@ -41,8 +41,9 @@ export default function ConversationsPage() {
     return token
   }
 
-  const loadConversations = async () => {
+  const loadConversations = async (silent = false) => {
     try {
+      if (!silent) setLoading(true)
       const token = getAuthToken()
       if (!token) return
 
@@ -56,19 +57,19 @@ export default function ConversationsPage() {
       if (response.ok) {
         const data = await response.json()
         setConversations(data)
-      } else {
+      } else if (!silent) {
         toast.error('Erro ao carregar conversas')
       }
     } catch (error) {
-      toast.error('Erro de conexão')
+      if (!silent) toast.error('Erro de conexão')
     } finally {
       setLoading(false)
     }
   }
 
-  const loadMessages = async (phoneNumber: string) => {
+  const loadMessages = async (phoneNumber: string, silent = false) => {
     try {
-      setMessagesLoading(true)
+      if (!silent) setMessagesLoading(true)
       const token = getAuthToken()
       if (!token) return
 
@@ -82,13 +83,13 @@ export default function ConversationsPage() {
       if (response.ok) {
         const data = await response.json()
         setMessages(data)
-      } else {
+      } else if (!silent) {
         toast.error('Erro ao carregar mensagens')
       }
     } catch (error) {
-      toast.error('Erro de conexão')
+      if (!silent) toast.error('Erro de conexão')
     } finally {
-      setMessagesLoading(false)
+      if (!silent) setMessagesLoading(false)
     }
   }
 
@@ -133,17 +134,25 @@ export default function ConversationsPage() {
     loadConversations()
   }, [])
 
-  // Auto-refresh conversations every 5 seconds
+  // Auto-refresh only messages of active conversation every 5 seconds (silent mode)
   useEffect(() => {
+    if (!activeConversation) return
+
     const interval = setInterval(() => {
-      loadConversations()
-      if (activeConversation) {
-        loadMessages(activeConversation)
-      }
+      loadMessages(activeConversation, true) // silent = true (no loading state)
     }, 5000)
 
     return () => clearInterval(interval)
   }, [activeConversation])
+
+  // Refresh conversations list every 30 seconds (silent mode)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadConversations(true) // silent = true (no loading state)
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="h-[calc(100vh-120px)] flex gap-0 border rounded-lg overflow-hidden bg-background">
