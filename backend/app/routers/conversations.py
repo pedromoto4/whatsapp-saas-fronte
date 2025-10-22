@@ -49,10 +49,12 @@ async def get_messages(
     try:
         messages = await get_conversation_messages(db, current_user.id, phone_number)
         
-        # Transform to response format with is_automated flag
+        # Return messages with is_automated from database
         response = []
         for msg in messages:
-            is_automated = bool(msg.template_name) or (msg.direction == 'out' and msg.kind == 'text')
+            # is_automated vem do banco (True para FAQ/Catalog, False para mensagens manuais)
+            # Templates também são considerados automáticos se enviados por campanha
+            is_automated = msg.is_automated or bool(msg.template_name)
             response.append({
                 'id': msg.id,
                 'direction': msg.direction,

@@ -110,6 +110,7 @@ class MessageLog(Base):
     content = Column(Text, nullable=True)  # conteúdo da mensagem
     template_name = Column(String, nullable=True)  # nome do template (se aplicável)
     cost_estimate = Column(String, default="0.00")  # custo estimado
+    is_automated = Column(Boolean, default=False)  # True se foi resposta automática (FAQ/Catalog)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
