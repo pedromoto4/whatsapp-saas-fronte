@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { PaperPlaneRight, Robot, User as UserIcon } from '@phosphor-icons/react'
@@ -98,7 +97,7 @@ export default function ChatWindow({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-muted/5">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">Carregando mensagens...</p>
@@ -108,7 +107,7 @@ export default function ChatWindow({
             <p className="text-muted-foreground">Nenhuma mensagem ainda</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-4">
             {messages.map((message) => {
               const isIncoming = message.direction === 'in'
               const content = message.content || `[Template: ${message.template_name}]`
@@ -162,7 +161,7 @@ export default function ChatWindow({
             <div ref={scrollRef} />
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Input */}
       <div className="p-4 border-t bg-background">
