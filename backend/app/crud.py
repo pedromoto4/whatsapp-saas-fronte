@@ -477,23 +477,32 @@ async def delete_template(db: AsyncSession, template_id: int, owner_id: int) -> 
 # Conversations CRUD
 async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
     """Get all conversations grouped by phone number with last message"""
-    from sqlalchemy import func, desc, and_
+    from sqlalchemy import func, desc, and_, text
     from sqlalchemy.exc import ProgrammingError
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     try:
-        # Try to get all messages (with is_automated if column exists)
-        try:
+        # Check if is_automated column exists using raw SQL
+        check_result = await db.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='message_logs' AND column_name='is_automated'"
+        ))
+        has_is_automated_column = check_result.fetchone() is not None
+        
+        logger.info(f"is_automated column exists: {has_is_automated_column}")
+        
+        if has_is_automated_column:
+            # Column exists, use full model
             all_messages_result = await db.execute(
                 select(MessageLog)
                 .where(MessageLog.owner_id == owner_id)
                 .order_by(MessageLog.created_at.desc())
             )
             all_messages = all_messages_result.scalars().all()
-            has_is_automated = True
-        except ProgrammingError:
-            # Column is_automated doesn't exist yet, use alternative query
-            # Select only existing columns
-            from sqlalchemy import column
+        else:
+            # Column doesn't exist, select only existing columns
             all_messages_result = await db.execute(
                 select(
                     MessageLog.id,
@@ -509,7 +518,7 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
                 .where(MessageLog.owner_id == owner_id)
                 .order_by(MessageLog.created_at.desc())
             )
-            # Convert rows to dict-like objects
+            # Convert rows to objects with is_automated = False
             all_messages = []
             for row in all_messages_result:
                 msg = type('MessageLog', (), {
@@ -525,7 +534,6 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
                     'is_automated': False  # Default value when column doesn't exist
                 })()
                 all_messages.append(msg)
-            has_is_automated = False
         
         # Group by phone number and get latest message
         phone_to_latest = {}
@@ -566,10 +574,22 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
 
 async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_number: str) -> List:
     """Get all messages for a specific conversation"""
-    from sqlalchemy.exc import ProgrammingError
+    from sqlalchemy import text
+    import logging
     
-    try:
-        # Try with is_automated column
+    logger = logging.getLogger(__name__)
+    
+    # Check if is_automated column exists
+    check_result = await db.execute(text(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_name='message_logs' AND column_name='is_automated'"
+    ))
+    has_is_automated_column = check_result.fetchone() is not None
+    
+    logger.info(f"get_conversation_messages - is_automated column exists: {has_is_automated_column}")
+    
+    if has_is_automated_column:
+        # Column exists, use full model
         result = await db.execute(
             select(MessageLog)
             .where(
@@ -579,8 +599,8 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
             .order_by(MessageLog.created_at.asc())
         )
         return result.scalars().all()
-    except ProgrammingError:
-        # Column doesn't exist, select without it
+    else:
+        # Column doesn't exist, select only existing columns
         result = await db.execute(
             select(
                 MessageLog.id,
