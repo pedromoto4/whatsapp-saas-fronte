@@ -23,13 +23,17 @@ export default function ChatWindow({
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const prevMessageCountRef = useRef(messages.length)
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom only when NEW messages arrive
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length > prevMessageCountRef.current) {
+      if (scrollRef.current) {
+        scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+      }
     }
-  }, [messages])
+    prevMessageCountRef.current = messages.length
+  }, [messages.length])
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return
