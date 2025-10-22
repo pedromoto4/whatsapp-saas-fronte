@@ -95,12 +95,22 @@ async def send_template_endpoint(
         if not template:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
         
-        # Check if template is approved (in production, you'd enforce this)
-        if template.status not in ["approved", "draft"]:
+        # Validate template status before sending
+        if template.status == "rejected":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, 
-                detail=f"Template is not approved (status: {template.status})"
+                detail="Template foi rejeitado pelo WhatsApp. Edite e resubmeta para aprovação."
             )
+        
+        # Warning for non-approved templates
+        is_test_mode = template.status in ["draft", "pending"]
+        if is_test_mode:
+            logger.warning(f"Sending template '{template.name}' in {template.status} mode (not officially approved)")
+        
+        # Only approved templates can be used in production at scale
+        if template.status != "approved":
+            # Allow sending for testing, but add warning to response
+            pass  # We'll add a warning in the response
         
         # Build message with variable substitution
         message = template.body_text
@@ -155,13 +165,22 @@ async def send_template_endpoint(
         )
         await create_message_log(db, log_data)
         
-        return {
+        # Build response with status warning if needed
+        response_data = {
             "status": "success",
             "message": "Template sent successfully",
             "whatsapp_response": response,
             "template_name": template.name,
-            "to": request.to
+            "to": request.to,
+            "template_status": template.status
         }
+        
+        # Add warning for non-approved templates
+        if is_test_mode:
+            response_data["warning"] = f"⚠️ Template está em modo '{template.status}'. Para uso em produção, aguarde aprovação do WhatsApp."
+            response_data["note"] = "Mensagens de templates não aprovados podem ter menor taxa de entrega."
+        
+        return response_data
         
     except HTTPException:
         raise
@@ -316,4 +335,81 @@ async def get_template_status_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get template status: {str(e)}"
         )
+
+@router.post("/webhook/status", status_code=status.HTTP_200_OK)
+async def template_status_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Webhook to receive template status updates from WhatsApp
+    
+    WhatsApp sends notifications when template status changes:
+    - PENDING → APPROVED
+    - PENDING → REJECTED
+    
+    Configure this webhook in Meta Developer Console:
+    URL: https://your-domain.com/api/templates/webhook/status
+    """
+    try:
+        data = await request.json()
+        logger.info(f"Received template status webhook: {data}")
+        
+        # WhatsApp webhook structure for template status updates
+        if data.get("object") == "whatsapp_business_account":
+            for entry in data.get("entry", []):
+                for change in entry.get("changes", []):
+                    if change.get("field") == "message_template_status_update":
+                        value = change.get("value", {})
+                        
+                        # Extract template information
+                        template_id = value.get("message_template_id")
+                        template_name = value.get("message_template_name")
+                        event = value.get("event")  # APPROVED, REJECTED, PAUSED, DISABLED
+                        reason = value.get("reason")  # Rejection reason if applicable
+                        
+                        logger.info(f"Template '{template_name}' ({template_id}): {event}")
+                        
+                        # Find template in database by whatsapp_template_id
+                        from sqlalchemy import select
+                        from app.models import Template
+                        
+                        result = await db.execute(
+                            select(Template).where(Template.whatsapp_template_id == str(template_id))
+                        )
+                        template = result.scalar_one_or_none()
+                        
+                        if template:
+                            # Map WhatsApp event to our status
+                            status_mapping = {
+                                "APPROVED": "approved",
+                                "REJECTED": "rejected",
+                                "PAUSED": "rejected",
+                                "DISABLED": "rejected"
+                            }
+                            
+                            new_status = status_mapping.get(event, template.status)
+                            
+                            # Update template status
+                            from app.schemas import TemplateUpdate
+                            template_update = TemplateUpdate(
+                                status=new_status,
+                                rejection_reason=reason if event in ["REJECTED", "PAUSED", "DISABLED"] else None
+                            )
+                            
+                            await update_template(db, template.id, template.owner_id, template_update)
+                            
+                            logger.info(f"✅ Template '{template.name}' status updated: {template.status} → {new_status}")
+                            
+                            if reason:
+                                logger.info(f"Rejection reason: {reason}")
+                        else:
+                            logger.warning(f"Template with WhatsApp ID {template_id} not found in database")
+        
+        return {"status": "ok"}
+        
+    except Exception as e:
+        logger.error(f"Error processing template webhook: {e}")
+        # Return 200 anyway to avoid WhatsApp retrying
+        return {"status": "error", "error": str(e)}
 

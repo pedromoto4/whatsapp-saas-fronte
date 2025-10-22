@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Plus, PencilSimple, Trash, FileText, CheckCircle, Clock, XCircle, PaperPlane, CloudArrowUp } from '@phosphor-icons/react'
+import { Plus, PencilSimple, Trash, FileText, CheckCircle, Clock, XCircle, PaperPlane, CloudArrowUp, WarningCircle } from '@phosphor-icons/react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface Template {
   id: number
@@ -177,7 +178,17 @@ export default function TemplateManagement() {
       })
 
       if (response.ok) {
+        const data = await response.json()
         toast.success('Template enviado com sucesso!')
+        
+        // Show warning if template is not approved
+        if (data.warning) {
+          toast.warning(data.warning, { duration: 5000 })
+        }
+        if (data.note) {
+          toast.info(data.note, { duration: 5000 })
+        }
+        
         setIsSendDialogOpen(false)
         resetSendForm()
       } else {
@@ -497,6 +508,25 @@ export default function TemplateManagement() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Status warnings */}
+                {template.status === 'pending' && (
+                  <Alert className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
+                    <WarningCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-xs">
+                      Template em revisão. Aguarde aprovação do WhatsApp (24-48h).
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {template.status === 'rejected' && template.rejection_reason && (
+                  <Alert className="bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800">
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-xs">
+                      <strong>Rejeitado:</strong> {template.rejection_reason}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 {template.header_text && (
                   <div className="text-sm">
                     <strong className="text-primary">Cabeçalho:</strong>
