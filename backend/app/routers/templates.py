@@ -2,7 +2,7 @@
 Templates Router
 Handles template creation, management and sending
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import json
