@@ -22,6 +22,9 @@ async def create_tables():
 asyncio.run(create_tables())
 "
 
+echo "Running schema updates..."
+python3 add_is_automated_column.py
+
 echo "Starting FastAPI application on port $APP_PORT"
 
 # Start uvicorn with the resolved port
