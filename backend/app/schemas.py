@@ -186,6 +186,7 @@ class MessageLogCreate(BaseModel):
     content: Optional[str] = None
     template_name: Optional[str] = None
     cost_estimate: Optional[str] = "0.00"
+    is_automated: Optional[bool] = False
 
 class MessageLogResponse(BaseModel):
     id: int

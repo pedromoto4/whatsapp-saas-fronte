@@ -501,8 +501,8 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
             contact = await get_contact_by_phone(db, phone_number)
             contact_name = contact.name if contact else None
             
-            # Check if last message was automated
-            is_automated = bool(msg.template_name) or (msg.direction == 'out' and msg.kind == 'text')
+            # Check if last message was automated (from database or if it's a template)
+            is_automated = msg.is_automated or bool(msg.template_name)
             
             conversations.append({
                 'phone_number': phone_number,

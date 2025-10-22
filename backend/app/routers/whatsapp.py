@@ -304,7 +304,8 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                 kind="text",
                                 to_from=phone_number,
                                 content=catalog_message,
-                                cost_estimate="0.005"  # Estimativa de custo
+                                cost_estimate="0.005",  # Estimativa de custo
+                                is_automated=True  # Resposta automática
                             )
                             await create_message_log(db, out_log)
                         except Exception as e:
@@ -331,7 +332,8 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                     kind="text",
                                     to_from=phone_number,
                                     content=matched_faq.answer,
-                                    cost_estimate="0.005"
+                                    cost_estimate="0.005",
+                                    is_automated=True  # Resposta automática
                                 )
                                 await create_message_log(db, out_log)
                             except Exception as e:
