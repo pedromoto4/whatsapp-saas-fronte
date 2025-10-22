@@ -11,6 +11,7 @@ import CatalogManagement from '@/components/pages/CatalogManagement'
 import MessageLogsPage from '@/components/pages/MessageLogsPage'
 import ContactsManagement from '@/components/pages/ContactsManagement'
 import TemplateManagement from '@/components/pages/TemplateManagement'
+import ConversationsPage from '@/components/pages/ConversationsPage'
 import { 
   Circle, 
   ChartBar, 
@@ -25,10 +26,11 @@ import {
   X,
   Phone,
   ClockCounterClockwise,
-  FileText
+  FileText,
+  ChatCircleText
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs' | 'logs' | 'contacts' | 'templates'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs' | 'logs' | 'contacts' | 'templates' | 'conversations'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -44,6 +46,7 @@ export default function DashboardPage() {
 
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
+    { id: 'conversations' as const, label: 'Conversas', icon: ChatCircleText },
     { id: 'whatsapp' as const, label: 'WhatsApp', icon: Phone },
     { id: 'contacts' as const, label: 'Contatos', icon: Users },
     { id: 'templates' as const, label: 'Templates', icon: FileText },
@@ -352,6 +355,9 @@ export default function DashboardPage() {
       
       case 'templates':
         return <TemplateManagement />
+      
+      case 'conversations':
+        return <ConversationsPage />
       
       case 'api-test':
         return (
