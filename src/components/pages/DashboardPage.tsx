@@ -78,7 +78,18 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 30000)
-    return () => clearInterval(interval)
+    
+    // Listen for conversation-read event to immediately update count
+    const handleConversationRead = (event: Event) => {
+      // Immediately fetch updated count from backend
+      fetchUnreadCount()
+    }
+    window.addEventListener('conversation-read', handleConversationRead as EventListener)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('conversation-read', handleConversationRead)
+    }
   }, [])
 
   const sidebarItems = [

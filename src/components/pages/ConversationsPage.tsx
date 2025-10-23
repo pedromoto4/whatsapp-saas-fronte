@@ -126,6 +126,9 @@ export default function ConversationsPage() {
         await loadMessages(activeConversation)
         // Reload conversations to update preview
         await loadConversations()
+        
+        // Trigger global refresh (conversation now marked as read)
+        window.dispatchEvent(new CustomEvent('conversation-read'))
       } else {
         const error = await response.json()
         toast.error(error.detail || 'Erro ao enviar mensagem')
@@ -139,7 +142,7 @@ export default function ConversationsPage() {
     setActiveConversation(phoneNumber)
     loadMessages(phoneNumber)
     
-    // Mark conversation as read (remove unread badge)
+    // Mark conversation as read locally
     setConversations(prev => 
       prev.map(conv => 
         conv.phone_number === phoneNumber 
@@ -147,6 +150,9 @@ export default function ConversationsPage() {
           : conv
       )
     )
+    
+    // Trigger global refresh immediately (badge & title will update)
+    window.dispatchEvent(new CustomEvent('conversation-read'))
   }
 
   // Load conversations on mount and initialize counter
