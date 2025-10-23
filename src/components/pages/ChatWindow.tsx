@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { PaperPlaneRight, Robot, User as UserIcon } from '@phosphor-icons/react'
+import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks } from '@phosphor-icons/react'
 import type { Conversation, Message } from './ConversationsPage'
 
 interface ChatWindowProps {
@@ -68,6 +68,22 @@ export default function ChatWindow({
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
     }
     return name.substring(0, 2).toUpperCase()
+  }
+
+  const renderMessageStatus = (message: Message) => {
+    // Only show status for outgoing messages
+    if (message.direction !== 'out') return null
+    
+    const status = message.status || 'sent'
+    const iconClass = "inline-block ml-1"
+    
+    if (status === 'read') {
+      return <Checks size={14} weight="bold" className={`${iconClass} text-blue-400`} />
+    } else if (status === 'delivered') {
+      return <Checks size={14} className={iconClass} />
+    } else {
+      return <Check size={14} className={iconClass} />
+    }
   }
 
   if (!conversation) {
@@ -152,9 +168,10 @@ export default function ChatWindow({
                         </Badge>
                       )}
                       <span 
-                        className={`text-xs ${isIncoming ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}
+                        className={`text-xs flex items-center ${isIncoming ? 'text-muted-foreground' : 'text-primary-foreground/70'}`}
                       >
                         {formatTime(message.created_at)}
+                        {renderMessageStatus(message)}
                       </span>
                     </div>
                   </div>

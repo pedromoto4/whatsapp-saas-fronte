@@ -21,6 +21,8 @@ export interface Message {
   template_name?: string
   created_at: string
   is_automated: boolean
+  status?: 'sent' | 'delivered' | 'read'
+  whatsapp_message_id?: string
 }
 
 export default function ConversationsPage() {

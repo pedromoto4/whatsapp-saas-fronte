@@ -250,6 +250,7 @@ class WhatsAppService:
             
             value = changes[0].get("value", {})
             messages = value.get("messages", [])
+            statuses = value.get("statuses", [])
             
             processed_messages = []
             
@@ -259,14 +260,25 @@ class WhatsAppService:
                     "from": message.get("from"),
                     "timestamp": message.get("timestamp"),
                     "type": message.get("type"),
-                    "text": message.get("text", {}).get("body") if message.get("type") == "text" else None,
-                    "statuses": value.get("statuses", [])
+                    "text": message.get("text", {}).get("body") if message.get("type") == "text" else None
                 }
                 processed_messages.append(processed_msg)
+            
+            # Process status updates
+            processed_statuses = []
+            for status_obj in statuses:
+                processed_status = {
+                    "id": status_obj.get("id"),  # WhatsApp message ID
+                    "status": status_obj.get("status"),  # sent, delivered, read
+                    "timestamp": status_obj.get("timestamp"),
+                    "recipient_id": status_obj.get("recipient_id")
+                }
+                processed_statuses.append(processed_status)
             
             return {
                 "status": "success",
                 "messages": processed_messages,
+                "statuses": processed_statuses,
                 "contacts": value.get("contacts", [])
             }
             

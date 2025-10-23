@@ -359,6 +359,40 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         "status": "received"
                     }
                     await create_message(db, message_data)
+            
+            # Handle status updates (delivered, read)
+            statuses = processed_data.get("statuses", [])
+            for status_update in statuses:
+                message_id = status_update.get("id")
+                status_value = status_update.get("status")  # sent, delivered, read
+                
+                if message_id and status_value:
+                    logger.info(f"Status update for message {message_id}: {status_value}")
+                    
+                    # Update message log status
+                    from sqlalchemy import select, update
+                    from app.models import MessageLog
+                    
+                    try:
+                        # Find message by whatsapp_message_id
+                        result = await db.execute(
+                            select(MessageLog).where(MessageLog.whatsapp_message_id == message_id)
+                        )
+                        message_log = result.scalar_one_or_none()
+                        
+                        if message_log:
+                            # Update status
+                            await db.execute(
+                                update(MessageLog)
+                                .where(MessageLog.id == message_log.id)
+                                .values(status=status_value)
+                            )
+                            await db.commit()
+                            logger.info(f"Updated message {message_id} status to {status_value}")
+                        else:
+                            logger.warning(f"Message {message_id} not found in database")
+                    except Exception as e:
+                        logger.error(f"Error updating message status: {e}")
         
         return {"status": "ok"}
         
