@@ -367,24 +367,28 @@ async def create_message_log(db: AsyncSession, log_data: MessageLogCreate) -> Me
     
     logger = logging.getLogger(__name__)
     
-    # Check if is_automated column exists
+    # Check which columns exist
     check_result = await db.execute(text(
         "SELECT column_name FROM information_schema.columns "
-        "WHERE table_name='message_logs' AND column_name='is_automated'"
+        "WHERE table_name='message_logs' AND column_name IN ('is_automated', 'status', 'whatsapp_message_id')"
     ))
-    has_is_automated_column = check_result.fetchone() is not None
+    existing_columns = {row[0] for row in check_result.fetchall()}
     
-    logger.info(f"create_message_log - is_automated column exists: {has_is_automated_column}")
+    has_is_automated = 'is_automated' in existing_columns
+    has_status = 'status' in existing_columns
+    has_whatsapp_message_id = 'whatsapp_message_id' in existing_columns
     
-    if has_is_automated_column:
-        # Column exists, use ORM normally
+    logger.info(f"create_message_log - Columns exist - is_automated: {has_is_automated}, status: {has_status}, whatsapp_message_id: {has_whatsapp_message_id}")
+    
+    if has_is_automated and has_status and has_whatsapp_message_id:
+        # All columns exist, use ORM normally
         db_log = MessageLog(**log_data.dict())
         db.add(db_log)
         await db.commit()
         await db.refresh(db_log)
         return db_log
     else:
-        # Column doesn't exist, use raw SQL INSERT
+        # Some columns don't exist, use raw SQL INSERT with only base columns
         insert_query = text("""
             INSERT INTO message_logs 
             (owner_id, direction, kind, to_from, content, template_name, cost_estimate, created_at)
@@ -542,17 +546,21 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
     logger = logging.getLogger(__name__)
     
     try:
-        # Check if is_automated column exists using raw SQL
+        # Check which columns exist using raw SQL
         check_result = await db.execute(text(
             "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='message_logs' AND column_name='is_automated'"
+            "WHERE table_name='message_logs' AND column_name IN ('is_automated', 'status', 'whatsapp_message_id')"
         ))
-        has_is_automated_column = check_result.fetchone() is not None
+        existing_columns = {row[0] for row in check_result.fetchall()}
         
-        logger.info(f"is_automated column exists: {has_is_automated_column}")
+        has_is_automated = 'is_automated' in existing_columns
+        has_status = 'status' in existing_columns
+        has_whatsapp_message_id = 'whatsapp_message_id' in existing_columns
         
-        if has_is_automated_column:
-            # Column exists, use full model (exclude empty read markers)
+        logger.info(f"Columns exist - is_automated: {has_is_automated}, status: {has_status}, whatsapp_message_id: {has_whatsapp_message_id}")
+        
+        if has_is_automated and has_status and has_whatsapp_message_id:
+            # All columns exist, use full model (exclude empty read markers)
             all_messages_result = await db.execute(
                 select(MessageLog)
                 .where(
@@ -582,7 +590,7 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
                 )
                 .order_by(MessageLog.created_at.desc())
             )
-            # Convert rows to objects with is_automated = False
+            # Convert rows to objects with default values for missing columns
             all_messages = []
             for row in all_messages_result:
                 msg = type('MessageLog', (), {
@@ -595,7 +603,9 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
                     'template_name': row.template_name,
                     'cost_estimate': row.cost_estimate,
                     'created_at': row.created_at,
-                    'is_automated': False  # Default value when column doesn't exist
+                    'is_automated': False,
+                    'status': 'sent',
+                    'whatsapp_message_id': None
                 })()
                 all_messages.append(msg)
         
@@ -682,17 +692,21 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
     
     logger = logging.getLogger(__name__)
     
-    # Check if is_automated column exists
+    # Check which columns exist
     check_result = await db.execute(text(
         "SELECT column_name FROM information_schema.columns "
-        "WHERE table_name='message_logs' AND column_name='is_automated'"
+        "WHERE table_name='message_logs' AND column_name IN ('is_automated', 'status', 'whatsapp_message_id')"
     ))
-    has_is_automated_column = check_result.fetchone() is not None
+    existing_columns = {row[0] for row in check_result.fetchall()}
     
-    logger.info(f"get_conversation_messages - is_automated column exists: {has_is_automated_column}")
+    has_is_automated = 'is_automated' in existing_columns
+    has_status = 'status' in existing_columns
+    has_whatsapp_message_id = 'whatsapp_message_id' in existing_columns
     
-    if has_is_automated_column:
-        # Column exists, use full model (exclude empty read markers)
+    logger.info(f"get_conversation_messages - Columns exist - is_automated: {has_is_automated}, status: {has_status}, whatsapp_message_id: {has_whatsapp_message_id}")
+    
+    if has_is_automated and has_status and has_whatsapp_message_id:
+        # All columns exist, use full model (exclude empty read markers)
         result = await db.execute(
             select(MessageLog)
             .where(
@@ -724,7 +738,7 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
             )
             .order_by(MessageLog.created_at.asc())
         )
-        # Convert to objects with is_automated = False
+        # Convert to objects with default values for missing columns
         messages = []
         for row in result:
             msg = type('MessageLog', (), {
@@ -737,7 +751,9 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
                 'template_name': row.template_name,
                 'cost_estimate': row.cost_estimate,
                 'created_at': row.created_at,
-                'is_automated': False
+                'is_automated': False,
+                'status': 'sent',
+                'whatsapp_message_id': None
             })()
             messages.append(msg)
         return messages
