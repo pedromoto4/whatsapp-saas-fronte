@@ -57,24 +57,17 @@ export default function ConversationsPage() {
 
       if (response.ok) {
         const data = await response.json()
-        setConversations(data)
         
         // Calculate total unread count
         const totalUnread = data.reduce((sum: number, conv: Conversation) => sum + conv.unread_count, 0)
         
-        // Show notification if new unread messages
-        if (silent && totalUnread > previousUnreadCountRef.current && previousUnreadCountRef.current > 0) {
-          toast.info('Nova mensagem recebida!')
-        }
-        
-        // Update page title
-        if (totalUnread > 0) {
-          document.title = `(${totalUnread}) Nova${totalUnread > 1 ? 's' : ''} mensagem${totalUnread > 1 ? 's' : ''} - WhatsApp SaaS`
-        } else {
-          document.title = 'WhatsApp SaaS'
+        // Show notification if new unread messages (only on silent refresh and if count increased)
+        if (silent && totalUnread > previousUnreadCountRef.current && previousUnreadCountRef.current >= 0) {
+          toast.info('📩 Nova mensagem recebida!')
         }
         
         previousUnreadCountRef.current = totalUnread
+        setConversations(data)
       } else if (!silent) {
         toast.error('Erro ao carregar conversas')
       }
@@ -145,11 +138,24 @@ export default function ConversationsPage() {
   const handleConversationSelect = (phoneNumber: string) => {
     setActiveConversation(phoneNumber)
     loadMessages(phoneNumber)
+    
+    // Mark conversation as read (remove unread badge)
+    setConversations(prev => 
+      prev.map(conv => 
+        conv.phone_number === phoneNumber 
+          ? { ...conv, unread_count: 0 }
+          : conv
+      )
+    )
   }
 
-  // Load conversations on mount
+  // Load conversations on mount and initialize counter
   useEffect(() => {
-    loadConversations()
+    loadConversations().then(() => {
+      // Initialize previous count to current count (avoid false notification on first load)
+      const totalUnread = conversations.reduce((sum, conv) => sum + conv.unread_count, 0)
+      previousUnreadCountRef.current = totalUnread
+    })
   }, [])
 
   // Auto-refresh only messages of active conversation every 5 seconds (silent mode)
@@ -171,6 +177,17 @@ export default function ConversationsPage() {
 
     return () => clearInterval(interval)
   }, [])
+
+  // Update page title when conversations change
+  useEffect(() => {
+    const totalUnread = conversations.reduce((sum, conv) => sum + conv.unread_count, 0)
+    
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) Nova${totalUnread > 1 ? 's' : ''} mensagem${totalUnread > 1 ? 's' : ''} - WhatsApp SaaS`
+    } else {
+      document.title = 'WhatsApp SaaS'
+    }
+  }, [conversations])
 
   return (
     <div className="h-[calc(100vh-120px)] flex gap-0 border rounded-lg overflow-hidden bg-background">
