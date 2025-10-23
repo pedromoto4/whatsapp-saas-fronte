@@ -48,6 +48,15 @@ class WhatsAppService:
                 "messages": [{"id": f"demo_msg_{datetime.now().timestamp()}"}]
             }
         
+        # Normalize phone number
+        normalized_to = to.strip()
+        if not normalized_to.startswith('+'):
+            normalized_to = '+' + normalized_to
+        
+        # Log attempt
+        logger.info(f"Attempting to send message to: {normalized_to}")
+        logger.info(f"Message content: {message[:50]}..." if len(message) > 50 else f"Message content: {message}")
+        
         url = f"{self.base_url}/{self.phone_number_id}/messages"
         
         headers = {
@@ -57,10 +66,12 @@ class WhatsAppService:
         
         payload = {
             "messaging_product": "whatsapp",
-            "to": to,
+            "to": normalized_to,
             "type": message_type,
             "text": {"body": message} if message_type == "text" else message
         }
+        
+        logger.info(f"Payload: {json.dumps(payload, indent=2)}")
         
         try:
             async with httpx.AsyncClient() as client:
