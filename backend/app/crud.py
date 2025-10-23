@@ -609,13 +609,16 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
             # Check if last message was automated (from database or if it's a template)
             is_automated = msg.is_automated or bool(msg.template_name)
             
+            # Simple unread count: 1 if last message is incoming, 0 otherwise
+            unread_count = 1 if msg.direction == 'in' else 0
+            
             conversations.append({
                 'phone_number': phone_number,
                 'contact_name': contact_name,
                 'last_message': msg.content or f"[Template: {msg.template_name}]",
                 'last_message_time': msg.created_at,
                 'direction': msg.direction,
-                'unread_count': 0,
+                'unread_count': unread_count,
                 'is_automated': is_automated
             })
         
