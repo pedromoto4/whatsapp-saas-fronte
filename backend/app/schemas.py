@@ -187,6 +187,8 @@ class MessageLogCreate(BaseModel):
     template_name: Optional[str] = None
     cost_estimate: Optional[str] = "0.00"
     is_automated: Optional[bool] = False
+    status: Optional[str] = "sent"  # sent, delivered, read
+    whatsapp_message_id: Optional[str] = None
 
 class MessageLogResponse(BaseModel):
     id: int
@@ -197,6 +199,9 @@ class MessageLogResponse(BaseModel):
     content: Optional[str]
     template_name: Optional[str]
     cost_estimate: str
+    is_automated: Optional[bool] = False
+    status: Optional[str] = "sent"
+    whatsapp_message_id: Optional[str] = None
     created_at: datetime
     
     class Config:
@@ -273,6 +278,8 @@ class ConversationMessageResponse(BaseModel):
     template_name: Optional[str]
     created_at: datetime
     is_automated: bool = False
+    status: Optional[str] = "sent"  # sent, delivered, read
+    whatsapp_message_id: Optional[str] = None
     
     class Config:
         from_attributes = True

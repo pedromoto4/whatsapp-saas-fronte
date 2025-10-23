@@ -63,12 +63,17 @@ async def get_messages(
     try:
         messages = await get_conversation_messages(db, current_user.id, phone_number)
         
-        # Return messages with is_automated from database
+        # Return messages with is_automated and status from database
         response = []
         for msg in messages:
             # is_automated vem do banco (True para FAQ/Catalog, False para mensagens manuais)
             # Templates também são considerados automáticos se enviados por campanha
             is_automated = msg.is_automated or bool(msg.template_name)
+            
+            # Get status (default to 'sent' if not present)
+            status = getattr(msg, 'status', 'sent')
+            whatsapp_message_id = getattr(msg, 'whatsapp_message_id', None)
+            
             response.append({
                 'id': msg.id,
                 'direction': msg.direction,
@@ -76,7 +81,9 @@ async def get_messages(
                 'kind': msg.kind,
                 'template_name': msg.template_name,
                 'created_at': msg.created_at,
-                'is_automated': is_automated
+                'is_automated': is_automated,
+                'status': status,
+                'whatsapp_message_id': whatsapp_message_id
             })
         
         return response
@@ -143,6 +150,11 @@ async def send_message(
             message=message_request.content
         )
         
+        # Extract message ID from WhatsApp response
+        whatsapp_message_id = None
+        if response.get("messages"):
+            whatsapp_message_id = response["messages"][0].get("id")
+        
         # Log the outgoing message
         log_data = MessageLogCreate(
             owner_id=current_user.id,
@@ -150,7 +162,9 @@ async def send_message(
             kind="text",
             to_from=phone_number,
             content=message_request.content,
-            cost_estimate="0.005"
+            cost_estimate="0.005",
+            status="sent",
+            whatsapp_message_id=whatsapp_message_id
         )
         await create_message_log(db, log_data)
         

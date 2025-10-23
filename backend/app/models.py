@@ -111,6 +111,8 @@ class MessageLog(Base):
     template_name = Column(String, nullable=True)  # nome do template (se aplicável)
     cost_estimate = Column(String, default="0.00")  # custo estimado
     is_automated = Column(Boolean, default=False)  # True se foi resposta automática (FAQ/Catalog)
+    status = Column(String, default="sent")  # sent, delivered, read (apenas para mensagens 'out')
+    whatsapp_message_id = Column(String, nullable=True)  # ID da mensagem no WhatsApp (para tracking)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
