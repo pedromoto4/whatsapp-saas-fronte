@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import ConversationsList from './ConversationsList'
 import ChatWindow from './ChatWindow'
@@ -29,6 +29,7 @@ export default function ConversationsPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
+  const previousUnreadCountRef = useRef<number>(0)
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
 
@@ -57,6 +58,23 @@ export default function ConversationsPage() {
       if (response.ok) {
         const data = await response.json()
         setConversations(data)
+        
+        // Calculate total unread count
+        const totalUnread = data.reduce((sum: number, conv: Conversation) => sum + conv.unread_count, 0)
+        
+        // Show notification if new unread messages
+        if (silent && totalUnread > previousUnreadCountRef.current && previousUnreadCountRef.current > 0) {
+          toast.info('Nova mensagem recebida!')
+        }
+        
+        // Update page title
+        if (totalUnread > 0) {
+          document.title = `(${totalUnread}) Nova${totalUnread > 1 ? 's' : ''} mensagem${totalUnread > 1 ? 's' : ''} - WhatsApp SaaS`
+        } else {
+          document.title = 'WhatsApp SaaS'
+        }
+        
+        previousUnreadCountRef.current = totalUnread
       } else if (!silent) {
         toast.error('Erro ao carregar conversas')
       }

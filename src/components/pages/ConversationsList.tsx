@@ -86,6 +86,7 @@ export default function ConversationsList({
                 flex items-start gap-3 p-4 border-b cursor-pointer transition-colors
                 hover:bg-accent
                 ${isActive ? 'bg-accent border-l-4 border-l-primary' : ''}
+                ${conversation.unread_count > 0 && !isActive ? 'bg-primary/5 font-semibold' : ''}
               `}
             >
               {/* Avatar */}
