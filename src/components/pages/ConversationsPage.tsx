@@ -143,16 +143,23 @@ export default function ConversationsPage() {
     loadMessages(phoneNumber)
     
     // Mark conversation as read locally
-    setConversations(prev => 
-      prev.map(conv => 
+    setConversations(prev => {
+      const updated = prev.map(conv => 
         conv.phone_number === phoneNumber 
           ? { ...conv, unread_count: 0 }
           : conv
       )
-    )
-    
-    // Trigger global refresh immediately (badge & title will update)
-    window.dispatchEvent(new CustomEvent('conversation-read'))
+      
+      // Update global state after local update
+      const newTotalUnread = updated.reduce((sum, conv) => sum + conv.unread_count, 0)
+      
+      // Dispatch event with new count
+      window.dispatchEvent(new CustomEvent('unread-count-changed', { 
+        detail: { count: newTotalUnread } 
+      }))
+      
+      return updated
+    })
   }
 
   // Load conversations on mount and initialize counter
