@@ -27,9 +27,12 @@ export default function ChatWindow({
   // Auto-scroll to bottom only when NEW messages arrive
   useEffect(() => {
     if (messages.length > prevMessageCountRef.current) {
-      if (scrollRef.current) {
-        scrollRef.current.scrollIntoView({ behavior: 'smooth' })
-      }
+      // Use setTimeout to ensure DOM is updated before scrolling
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        }
+      }, 100)
     }
     prevMessageCountRef.current = messages.length
   }, [messages.length])
