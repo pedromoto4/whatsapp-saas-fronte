@@ -79,16 +79,31 @@ export default function DashboardPage() {
     fetchUnreadCount()
     const interval = setInterval(fetchUnreadCount, 30000)
     
-    // Listen for conversation-read event to immediately update count
-    const handleConversationRead = (event: Event) => {
-      // Immediately fetch updated count from backend
+    // Listen for conversation-read event to fetch from backend
+    const handleConversationRead = () => {
       fetchUnreadCount()
     }
-    window.addEventListener('conversation-read', handleConversationRead as EventListener)
+    
+    // Listen for unread-count-changed event to immediately update from local state
+    const handleUnreadCountChanged = (event: CustomEvent) => {
+      const newCount = event.detail.count
+      setUnreadCount(newCount)
+      
+      // Update page title immediately
+      if (newCount > 0) {
+        document.title = `(${newCount}) Nova${newCount > 1 ? 's' : ''} mensagem${newCount > 1 ? 's' : ''} - WhatsApp SaaS`
+      } else {
+        document.title = 'WhatsApp SaaS'
+      }
+    }
+    
+    window.addEventListener('conversation-read', handleConversationRead)
+    window.addEventListener('unread-count-changed', handleUnreadCountChanged as EventListener)
     
     return () => {
       clearInterval(interval)
       window.removeEventListener('conversation-read', handleConversationRead)
+      window.removeEventListener('unread-count-changed', handleUnreadCountChanged as EventListener)
     }
   }, [])
 
