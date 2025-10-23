@@ -281,6 +281,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     message_text = msg["text"]
                     logger.info(f"Received message from {phone_number}: {message_text}")
                     
+                    # Log incoming message FIRST (before processing)
+                    log_data = MessageLogCreate(
+                        owner_id=contact.owner_id,
+                        direction="in",
+                        kind="text",
+                        to_from=phone_number,
+                        content=message_text,
+                        cost_estimate="0.00"
+                    )
+                    await create_message_log(db, log_data)
+                    
                     normalized_text = message_text.lower().strip()
                     
                     # Check if it's a catalog request
@@ -341,24 +352,13 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         else:
                             logger.info(f"No FAQ or catalog matched for message: {message_text}")
                     
-                    # Save incoming message
+                    # Save incoming message to messages table
                     message_data = {
                         "contact_id": contact.id,
                         "content": msg["text"],
                         "status": "received"
                     }
                     await create_message(db, message_data)
-                    
-                    # Log incoming message
-                    log_data = MessageLogCreate(
-                        owner_id=contact.owner_id,
-                        direction="in",
-                        kind="text",
-                        to_from=phone_number,
-                        content=message_text,
-                        cost_estimate="0.00"
-                    )
-                    await create_message_log(db, log_data)
         
         return {"status": "ok"}
         
