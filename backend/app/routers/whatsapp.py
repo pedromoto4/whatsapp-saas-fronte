@@ -370,10 +370,24 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     logger.info(f"Status update for message {message_id}: {status_value}")
                     
                     # Update message log status
-                    from sqlalchemy import select, update
+                    from sqlalchemy import select, update, text
                     from app.models import MessageLog
                     
                     try:
+                        # Check if status and whatsapp_message_id columns exist
+                        check_result = await db.execute(text(
+                            "SELECT column_name FROM information_schema.columns "
+                            "WHERE table_name='message_logs' AND column_name IN ('status', 'whatsapp_message_id')"
+                        ))
+                        existing_columns = {row[0] for row in check_result.fetchall()}
+                        
+                        has_status = 'status' in existing_columns
+                        has_whatsapp_message_id = 'whatsapp_message_id' in existing_columns
+                        
+                        if not has_status or not has_whatsapp_message_id:
+                            logger.warning(f"Status columns not yet created in database. Skipping status update.")
+                            continue
+                        
                         # Find message by whatsapp_message_id
                         result = await db.execute(
                             select(MessageLog).where(MessageLog.whatsapp_message_id == message_id)
