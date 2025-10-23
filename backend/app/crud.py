@@ -363,6 +363,9 @@ async def build_catalog_message(db: AsyncSession, owner_id: int, limit: int = 5)
 async def create_message_log(db: AsyncSession, log_data: MessageLogCreate) -> MessageLog:
     """Create a new message log entry"""
     from sqlalchemy import text
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     # Check if is_automated column exists
     check_result = await db.execute(text(
@@ -371,16 +374,57 @@ async def create_message_log(db: AsyncSession, log_data: MessageLogCreate) -> Me
     ))
     has_is_automated_column = check_result.fetchone() is not None
     
-    # Convert to dict and remove is_automated if column doesn't exist
-    log_dict = log_data.dict()
-    if not has_is_automated_column and 'is_automated' in log_dict:
-        log_dict.pop('is_automated')
+    logger.info(f"create_message_log - is_automated column exists: {has_is_automated_column}")
     
-    db_log = MessageLog(**log_dict)
-    db.add(db_log)
-    await db.commit()
-    await db.refresh(db_log)
-    return db_log
+    if has_is_automated_column:
+        # Column exists, use ORM normally
+        db_log = MessageLog(**log_data.dict())
+        db.add(db_log)
+        await db.commit()
+        await db.refresh(db_log)
+        return db_log
+    else:
+        # Column doesn't exist, use raw SQL INSERT
+        insert_query = text("""
+            INSERT INTO message_logs 
+            (owner_id, direction, kind, to_from, content, template_name, cost_estimate, created_at)
+            VALUES 
+            (:owner_id, :direction, :kind, :to_from, :content, :template_name, :cost_estimate, NOW())
+            RETURNING id, created_at
+        """)
+        
+        result = await db.execute(insert_query, {
+            'owner_id': log_data.owner_id,
+            'direction': log_data.direction,
+            'kind': log_data.kind,
+            'to_from': log_data.to_from,
+            'content': log_data.content,
+            'template_name': log_data.template_name,
+            'cost_estimate': log_data.cost_estimate
+        })
+        
+        row = result.fetchone()
+        await db.commit()
+        
+        # Fetch the created log to return
+        fetch_query = text("SELECT * FROM message_logs WHERE id = :id")
+        fetch_result = await db.execute(fetch_query, {'id': row.id})
+        log_row = fetch_result.fetchone()
+        
+        # Convert to MessageLog object
+        db_log = MessageLog(
+            id=log_row.id,
+            owner_id=log_row.owner_id,
+            direction=log_row.direction,
+            kind=log_row.kind,
+            to_from=log_row.to_from,
+            content=log_row.content,
+            template_name=log_row.template_name,
+            cost_estimate=log_row.cost_estimate,
+            created_at=log_row.created_at
+        )
+        
+        return db_log
 
 async def get_message_logs(db: AsyncSession, owner_id: int, limit: int = 100, offset: int = 0) -> List[MessageLog]:
     """Get message logs for a user"""
