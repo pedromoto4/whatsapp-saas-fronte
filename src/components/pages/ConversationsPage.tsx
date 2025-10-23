@@ -42,6 +42,7 @@ export default function ConversationsPage() {
     return token
   }
 
+
   const loadConversations = async (silent = false) => {
     try {
       if (!silent) setLoading(true)
@@ -138,11 +139,11 @@ export default function ConversationsPage() {
     }
   }
 
-  const handleConversationSelect = (phoneNumber: string) => {
+  const handleConversationSelect = async (phoneNumber: string) => {
     setActiveConversation(phoneNumber)
     loadMessages(phoneNumber)
     
-    // Mark conversation as read locally
+    // Mark conversation as read locally (immediate UI feedback)
     setConversations(prev => {
       const updated = prev.map(conv => 
         conv.phone_number === phoneNumber 
@@ -160,6 +161,23 @@ export default function ConversationsPage() {
       
       return updated
     })
+    
+    // Mark as read in backend (persists across refreshes)
+    try {
+      const token = getAuthToken()
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/conversations/${encodeURIComponent(phoneNumber)}/mark-read`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      }
+    } catch (error) {
+      // Silent fail - not critical
+      console.log('Failed to mark as read in backend')
+    }
   }
 
   // Load conversations on mount and initialize counter

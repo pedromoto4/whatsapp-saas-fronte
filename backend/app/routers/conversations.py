@@ -87,6 +87,36 @@ async def get_messages(
             detail=f"Failed to load messages: {str(e)}"
         )
 
+@router.post("/{phone_number}/mark-read", status_code=status.HTTP_200_OK)
+async def mark_conversation_as_read(
+    phone_number: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark conversation as read by creating a silent read marker"""
+    try:
+        from app.schemas import MessageLogCreate
+        from app.crud import create_message_log
+        
+        # Create a silent "read marker" message
+        # This makes backend think user responded, so unread_count becomes 0
+        log_data = MessageLogCreate(
+            owner_id=current_user.id,
+            direction="out",
+            kind="text",
+            to_from=phone_number,
+            content="",  # Empty content = read marker
+            cost_estimate="0.00",
+            is_automated=False
+        )
+        await create_message_log(db, log_data)
+        
+        logger.info(f"Conversation with {phone_number} marked as read")
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error marking conversation as read: {e}")
+        return {"status": "error", "detail": str(e)}
+
 @router.post("/{phone_number}/send")
 async def send_message(
     phone_number: str,
