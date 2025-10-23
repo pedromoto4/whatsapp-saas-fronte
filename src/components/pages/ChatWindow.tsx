@@ -78,11 +78,11 @@ export default function ChatWindow({
     const iconClass = "inline-block ml-1"
     
     if (status === 'read') {
-      return <Checks size={14} weight="bold" className={`${iconClass} text-blue-400`} />
+      return <Checks size={16} weight="bold" className={`${iconClass} text-blue-400`} />
     } else if (status === 'delivered') {
-      return <Checks size={14} className={iconClass} />
+      return <Checks size={16} className={iconClass} />
     } else {
-      return <Check size={14} className={iconClass} />
+      return <Check size={16} className={iconClass} />
     }
   }
 
