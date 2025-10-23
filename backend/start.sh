@@ -20,36 +20,57 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
     print('✅ Database tables created successfully')
 
-async def add_is_automated_column():
+async def add_missing_columns():
     async with engine.begin() as conn:
-        # Check if column exists
+        # Check which columns exist
         check_query = text('''
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_name=\'message_logs\' 
-            AND column_name=\'is_automated\';
+            AND column_name IN (\'is_automated\', \'status\', \'whatsapp_message_id\');
         ''')
         
         result = await conn.execute(check_query)
-        exists = result.fetchone() is not None
+        existing_columns = {row[0] for row in result.fetchall()}
         
-        if not exists:
+        # Add is_automated column if missing
+        if 'is_automated' not in existing_columns:
             print('Adding is_automated column to message_logs table...')
-            
-            # Add the column with default value False
             alter_query = text('''
                 ALTER TABLE message_logs 
                 ADD COLUMN is_automated BOOLEAN DEFAULT FALSE;
             ''')
-            
             await conn.execute(alter_query)
-            
             print('✅ Column is_automated added successfully!')
         else:
             print('ℹ️  Column is_automated already exists.')
+        
+        # Add status column if missing
+        if 'status' not in existing_columns:
+            print('Adding status column to message_logs table...')
+            alter_query = text('''
+                ALTER TABLE message_logs 
+                ADD COLUMN status VARCHAR DEFAULT \'sent\';
+            ''')
+            await conn.execute(alter_query)
+            print('✅ Column status added successfully!')
+        else:
+            print('ℹ️  Column status already exists.')
+        
+        # Add whatsapp_message_id column if missing
+        if 'whatsapp_message_id' not in existing_columns:
+            print('Adding whatsapp_message_id column to message_logs table...')
+            alter_query = text('''
+                ALTER TABLE message_logs 
+                ADD COLUMN whatsapp_message_id VARCHAR;
+            ''')
+            await conn.execute(alter_query)
+            print('✅ Column whatsapp_message_id added successfully!')
+        else:
+            print('ℹ️  Column whatsapp_message_id already exists.')
 
 asyncio.run(create_tables())
-asyncio.run(add_is_automated_column())
+asyncio.run(add_missing_columns())
 "
 
 echo "Starting FastAPI application on port $APP_PORT"
