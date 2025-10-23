@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,11 +38,48 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState<DashboardSection>('overview')
   const [apiTestResults, setApiTestResults] = useState<{[key: string]: 'pending' | 'success' | 'error'}>({})
   const [isTestingAll, setIsTestingAll] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const handleLogout = async () => {
     await logout()
     navigate('/')
   }
+
+  // Fetch unread count
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('firebase_token')
+      if (!token) return
+
+      const response = await fetch(`${API_BASE_URL}/api/conversations/unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUnreadCount(data.unread_count)
+        
+        // Update page title
+        if (data.unread_count > 0) {
+          document.title = `(${data.unread_count}) Nova${data.unread_count > 1 ? 's' : ''} mensagem${data.unread_count > 1 ? 's' : ''} - WhatsApp SaaS`
+        } else {
+          document.title = 'WhatsApp SaaS'
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  // Fetch unread count on mount and every 30 seconds
+  useEffect(() => {
+    fetchUnreadCount()
+    const interval = setInterval(fetchUnreadCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
@@ -759,14 +796,21 @@ export default function DashboardPage() {
                 <li key={item.id}>
                   <button
                     onClick={() => setActiveSection(item.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                       activeSection === item.id
                         ? 'bg-primary text-primary-foreground'
                         : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <item.icon size={20} />
-                    {item.label}
+                    <div className="flex items-center gap-3">
+                      <item.icon size={20} />
+                      {item.label}
+                    </div>
+                    {item.id === 'conversations' && unreadCount > 0 && (
+                      <Badge className="bg-red-500 text-white">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </button>
                 </li>
               ))}

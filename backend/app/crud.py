@@ -609,8 +609,44 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
             # Check if last message was automated (from database or if it's a template)
             is_automated = msg.is_automated or bool(msg.template_name)
             
-            # Simple unread count: 1 if last message is incoming, 0 otherwise
-            unread_count = 1 if msg.direction == 'in' else 0
+            # Count all unread incoming messages (after last outgoing message)
+            # Find timestamp of last outgoing message
+            last_out_query = await db.execute(
+                select(MessageLog.created_at)
+                .where(
+                    MessageLog.owner_id == owner_id,
+                    MessageLog.to_from == phone_number,
+                    MessageLog.direction == 'out'
+                )
+                .order_by(MessageLog.created_at.desc())
+                .limit(1)
+            )
+            last_out_row = last_out_query.fetchone()
+            last_out_time = last_out_row[0] if last_out_row else None
+            
+            # Count incoming messages after last outgoing
+            if last_out_time:
+                unread_query = await db.execute(
+                    select(func.count(MessageLog.id))
+                    .where(
+                        MessageLog.owner_id == owner_id,
+                        MessageLog.to_from == phone_number,
+                        MessageLog.direction == 'in',
+                        MessageLog.created_at > last_out_time
+                    )
+                )
+                unread_count = unread_query.scalar() or 0
+            else:
+                # No outgoing messages yet, count all incoming
+                unread_query = await db.execute(
+                    select(func.count(MessageLog.id))
+                    .where(
+                        MessageLog.owner_id == owner_id,
+                        MessageLog.to_from == phone_number,
+                        MessageLog.direction == 'in'
+                    )
+                )
+                unread_count = unread_query.scalar() or 0
             
             conversations.append({
                 'phone_number': phone_number,
