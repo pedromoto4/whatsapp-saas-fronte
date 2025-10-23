@@ -11,7 +11,7 @@ from app.database import create_tables
 from app.models import User, FAQ, Catalog, MessageLog, Template
 from app.schemas import UserResponse
 from app.dependencies import get_current_user, get_db
-from app.routers import contacts, campaigns, messages, whatsapp, faqs, catalog, message_logs, templates, conversations
+from app.routers import contacts, campaigns, messages, whatsapp, faqs, catalog, message_logs, templates, conversations, admin
 
 load_dotenv()
 
@@ -51,6 +51,7 @@ app.include_router(message_logs.router)
 app.include_router(templates.router)
 app.include_router(conversations.router)
 app.include_router(whatsapp.router)
+app.include_router(admin.router)
 
 @app.on_event("startup")
 async def startup_event():
