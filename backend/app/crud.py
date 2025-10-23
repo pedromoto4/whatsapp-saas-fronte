@@ -552,15 +552,18 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
         logger.info(f"is_automated column exists: {has_is_automated_column}")
         
         if has_is_automated_column:
-            # Column exists, use full model
+            # Column exists, use full model (exclude empty read markers)
             all_messages_result = await db.execute(
                 select(MessageLog)
-                .where(MessageLog.owner_id == owner_id)
+                .where(
+                    MessageLog.owner_id == owner_id,
+                    MessageLog.content != ""  # Exclude read markers
+                )
                 .order_by(MessageLog.created_at.desc())
             )
             all_messages = all_messages_result.scalars().all()
         else:
-            # Column doesn't exist, select only existing columns
+            # Column doesn't exist, select only existing columns (exclude empty read markers)
             all_messages_result = await db.execute(
                 select(
                     MessageLog.id,
@@ -573,7 +576,10 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
                     MessageLog.cost_estimate,
                     MessageLog.created_at
                 )
-                .where(MessageLog.owner_id == owner_id)
+                .where(
+                    MessageLog.owner_id == owner_id,
+                    MessageLog.content != ""  # Exclude read markers
+                )
                 .order_by(MessageLog.created_at.desc())
             )
             # Convert rows to objects with is_automated = False
@@ -686,18 +692,19 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
     logger.info(f"get_conversation_messages - is_automated column exists: {has_is_automated_column}")
     
     if has_is_automated_column:
-        # Column exists, use full model
+        # Column exists, use full model (exclude empty read markers)
         result = await db.execute(
             select(MessageLog)
             .where(
                 MessageLog.owner_id == owner_id,
-                MessageLog.to_from == phone_number
+                MessageLog.to_from == phone_number,
+                MessageLog.content != ""  # Exclude read markers
             )
             .order_by(MessageLog.created_at.asc())
         )
         return result.scalars().all()
     else:
-        # Column doesn't exist, select only existing columns
+        # Column doesn't exist, select only existing columns (exclude empty read markers)
         result = await db.execute(
             select(
                 MessageLog.id,
@@ -712,7 +719,8 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
             )
             .where(
                 MessageLog.owner_id == owner_id,
-                MessageLog.to_from == phone_number
+                MessageLog.to_from == phone_number,
+                MessageLog.content != ""  # Exclude read markers
             )
             .order_by(MessageLog.created_at.asc())
         )
