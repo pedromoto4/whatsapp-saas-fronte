@@ -192,16 +192,37 @@ async def archive_conversation(
     """Archive a conversation"""
     try:
         contact = await get_contact_by_phone(db, phone_number)
+        
+        # If contact doesn't exist, create it
         if not contact:
+            contact_data = {
+                "phone_number": phone_number,
+                "name": phone_number,
+                "owner_id": current_user.id
+            }
+            contact = await create_contact_from_webhook(db, contact_data)
+            logger.info(f"Created contact for {phone_number} before archiving")
+        
+        # Check if is_archived column exists
+        from sqlalchemy import update, text
+        from app.models import Contact
+        
+        check_query = text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='contacts' 
+            AND column_name='is_archived'
+        """)
+        result = await db.execute(check_query)
+        has_column = result.fetchone() is not None
+        
+        if not has_column:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Contact not found"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Archive feature not available. Please run migration: /admin/db/add-is-archived-column"
             )
         
         # Update contact to archived
-        from sqlalchemy import update
-        from app.models import Contact
-        
         await db.execute(
             update(Contact)
             .where(Contact.id == contact.id)
@@ -230,16 +251,37 @@ async def unarchive_conversation(
     """Unarchive a conversation"""
     try:
         contact = await get_contact_by_phone(db, phone_number)
+        
+        # If contact doesn't exist, create it
         if not contact:
+            contact_data = {
+                "phone_number": phone_number,
+                "name": phone_number,
+                "owner_id": current_user.id
+            }
+            contact = await create_contact_from_webhook(db, contact_data)
+            logger.info(f"Created contact for {phone_number} before unarchiving")
+        
+        # Check if is_archived column exists
+        from sqlalchemy import update, text
+        from app.models import Contact
+        
+        check_query = text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='contacts' 
+            AND column_name='is_archived'
+        """)
+        result = await db.execute(check_query)
+        has_column = result.fetchone() is not None
+        
+        if not has_column:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Contact not found"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Archive feature not available. Please run migration: /admin/db/add-is-archived-column"
             )
         
         # Update contact to unarchived
-        from sqlalchemy import update
-        from app.models import Contact
-        
         await db.execute(
             update(Contact)
             .where(Contact.id == contact.id)
