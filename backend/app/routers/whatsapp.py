@@ -393,22 +393,25 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         media_url = None
                     
                     # Log incoming media message
-                    caption = media_info.get("caption", "")
-                    filename = media_info.get("filename", f"{media_type}_{media_info['id']}")
-                    
-                    log_data = MessageLogCreate(
-                        owner_id=contact.owner_id,
-                        direction="in",
-                        kind="media",
-                        to_from=phone_number,
-                        content=caption or f"[{media_type.upper()}]",
-                        cost_estimate="0.00",
-                        media_url=media_url,
-                        media_type=media_type,
-                        media_filename=filename
-                    )
-                    await create_message_log(db, log_data)
-                    logger.info(f"✅ Logged {media_type} from {phone_number} - URL: {media_url}, Type: {media_type}, Filename: {filename}")
+                    try:
+                        caption = media_info.get("caption", "")
+                        filename = media_info.get("filename", f"{media_type}_{media_info['id']}")
+                        
+                        log_data = MessageLogCreate(
+                            owner_id=contact.owner_id,
+                            direction="in",
+                            kind="media",
+                            to_from=phone_number,
+                            content=caption or f"[{media_type.upper()}]",
+                            cost_estimate="0.00",
+                            media_url=media_url,
+                            media_type=media_type,
+                            media_filename=filename
+                        )
+                        await create_message_log(db, log_data)
+                        print(f"✅ Logged {media_type} from {phone_number} - URL: {media_url}, Type: {media_type}, Filename: {filename}")
+                    except Exception as e:
+                        print(f"❌ Error saving media message: {e}")
             
             # Handle status updates (delivered, read)
             statuses = processed_data.get("statuses", [])
