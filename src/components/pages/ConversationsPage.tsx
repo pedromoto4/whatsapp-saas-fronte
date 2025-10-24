@@ -249,7 +249,14 @@ export default function ConversationsPage() {
         toast.success(isArchived ? 'Conversa desarquivada' : 'Conversa arquivada')
         loadConversations(true) // Reload conversations
       } else {
-        toast.error('Erro ao arquivar conversa')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.detail || 'Erro ao arquivar conversa'
+        
+        if (errorMessage.includes('migration')) {
+          toast.error('Funcionalidade de arquivo não disponível. Execute a migração primeiro.')
+        } else {
+          toast.error(errorMessage)
+        }
       }
     } catch (error) {
       toast.error('Erro de conexão')
