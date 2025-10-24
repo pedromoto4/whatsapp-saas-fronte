@@ -712,6 +712,7 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
     logger.info(f"get_conversation_messages - Columns exist - is_automated: {has_is_automated}, status: {has_status}, whatsapp_message_id: {has_whatsapp_message_id}, media: {has_media}")
     
     if has_is_automated and has_status and has_whatsapp_message_id and has_media:
+        logger.info("✅ Using FULL model with all columns")
         # All columns exist, use full model (exclude empty read markers)
         result = await db.execute(
             select(MessageLog)
@@ -724,6 +725,7 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
         )
         return result.scalars().all()
     else:
+        logger.info("⚠️ Using FALLBACK model with limited columns")
         # Column doesn't exist, select only existing columns (exclude empty read markers)
         result = await db.execute(
             select(
