@@ -1,7 +1,9 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ChatCircle, Robot } from '@phosphor-icons/react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { ChatCircle, Robot, MagnifyingGlass, Funnel, X } from '@phosphor-icons/react'
 import type { Conversation } from './ConversationsPage'
 
 interface ConversationsListProps {
@@ -9,13 +11,21 @@ interface ConversationsListProps {
   activeConversation: string | null
   onSelectConversation: (phoneNumber: string) => void
   loading: boolean
+  searchQuery: string
+  onSearchChange: (query: string) => void
+  showOnlyUnread: boolean
+  onToggleUnread: () => void
 }
 
 export default function ConversationsList({
   conversations,
   activeConversation,
   onSelectConversation,
-  loading
+  loading,
+  searchQuery,
+  onSearchChange,
+  showOnlyUnread,
+  onToggleUnread
 }: ConversationsListProps) {
   
   const getInitials = (name?: string) => {
@@ -67,9 +77,41 @@ export default function ConversationsList({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b bg-background">
-        <h2 className="text-lg font-semibold">Conversas</h2>
-        <p className="text-sm text-muted-foreground">{conversations.length} conversas</p>
+      <div className="p-4 border-b bg-background space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Conversas</h2>
+          <p className="text-sm text-muted-foreground">{conversations.length}</p>
+        </div>
+        
+        {/* Search bar */}
+        <div className="relative">
+          <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Buscar por nome ou telefone..."
+            className="pl-10 pr-10"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        
+        {/* Filter button */}
+        <Button
+          variant={showOnlyUnread ? "default" : "outline"}
+          size="sm"
+          onClick={onToggleUnread}
+          className="w-full"
+        >
+          <Funnel size={16} className="mr-2" />
+          {showOnlyUnread ? 'Mostrar todas' : 'Apenas não lidas'}
+        </Button>
       </div>
 
       {/* Conversations list */}
