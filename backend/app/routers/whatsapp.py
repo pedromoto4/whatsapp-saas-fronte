@@ -378,10 +378,11 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 
                 # Handle media messages (image, document, video, audio)
                 elif msg.get("type") in ["image", "document", "video", "audio"] and msg.get("media"):
+                    print(f"🎯 ENTERING MEDIA BLOCK!")
                     media_info = msg["media"]
                     media_type = msg["type"]
-                    logger.info(f"🖼️ Received {media_type} from {phone_number}")
-                    logger.info(f"📦 Media info: {media_info}")
+                    print(f"🖼️ Received {media_type} from {phone_number}")
+                    print(f"📦 Media info: {media_info}")
                     
                     # Get media URL from WhatsApp
                     media_url = await whatsapp_service.get_media_url(media_info["id"])
