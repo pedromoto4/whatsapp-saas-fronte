@@ -263,6 +263,9 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             messages = processed_data.get("messages", [])
             
             for msg in messages:
+                # DEBUG: Log raw message
+                logger.info(f"📨 RAW MESSAGE from webhook: {msg}")
+                
                 # Find or create contact
                 phone_number = f"+{msg['from']}"
                 contact = await get_contact_by_phone(db, phone_number)
