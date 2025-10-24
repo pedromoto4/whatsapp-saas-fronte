@@ -255,13 +255,26 @@ class WhatsAppService:
             processed_messages = []
             
             for message in messages:
+                msg_type = message.get("type")
                 processed_msg = {
                     "id": message.get("id"),
                     "from": message.get("from"),
                     "timestamp": message.get("timestamp"),
-                    "type": message.get("type"),
-                    "text": message.get("text", {}).get("body") if message.get("type") == "text" else None
+                    "type": msg_type,
+                    "text": message.get("text", {}).get("body") if msg_type == "text" else None
                 }
+                
+                # Process media messages (image, document, video, audio)
+                if msg_type in ["image", "document", "video", "audio"]:
+                    media_data = message.get(msg_type, {})
+                    processed_msg["media"] = {
+                        "id": media_data.get("id"),
+                        "mime_type": media_data.get("mime_type"),
+                        "sha256": media_data.get("sha256"),
+                        "filename": media_data.get("filename"),  # Only for documents
+                        "caption": media_data.get("caption")  # Optional caption
+                    }
+                
                 processed_messages.append(processed_msg)
             
             # Process status updates
@@ -294,6 +307,33 @@ class WhatsAppService:
             True if configured, False otherwise
         """
         return bool(self.access_token and self.phone_number_id)
+    
+    async def get_media_url(self, media_id: str) -> Optional[str]:
+        """
+        Get the download URL for a media file from WhatsApp
+        
+        Args:
+            media_id: The media ID from WhatsApp webhook
+        
+        Returns:
+            The download URL for the media file, or None if error
+        """
+        if not self.access_token:
+            logger.warning("WhatsApp not configured, cannot get media URL")
+            return None
+        
+        url = f"{self.base_url}/{media_id}"
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                return data.get("url")
+        except Exception as e:
+            logger.error(f"Error getting media URL: {e}")
+            return None
     
     async def submit_template_for_approval(
         self, 

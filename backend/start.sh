@@ -68,6 +68,40 @@ async def add_missing_columns():
             print('✅ Column whatsapp_message_id added successfully!')
         else:
             print('ℹ️  Column whatsapp_message_id already exists.')
+        
+        # Add media columns if missing
+        if 'media_url' not in existing_columns:
+            print('Adding media_url column to message_logs table...')
+            alter_query = text('''
+                ALTER TABLE message_logs 
+                ADD COLUMN media_url VARCHAR;
+            ''')
+            await conn.execute(alter_query)
+            print('✅ Column media_url added successfully!')
+        else:
+            print('ℹ️  Column media_url already exists.')
+        
+        if 'media_type' not in existing_columns:
+            print('Adding media_type column to message_logs table...')
+            alter_query = text('''
+                ALTER TABLE message_logs 
+                ADD COLUMN media_type VARCHAR;
+            ''')
+            await conn.execute(alter_query)
+            print('✅ Column media_type added successfully!')
+        else:
+            print('ℹ️  Column media_type already exists.')
+        
+        if 'media_filename' not in existing_columns:
+            print('Adding media_filename column to message_logs table...')
+            alter_query = text('''
+                ALTER TABLE message_logs 
+                ADD COLUMN media_filename VARCHAR;
+            ''')
+            await conn.execute(alter_query)
+            print('✅ Column media_filename added successfully!')
+        else:
+            print('ℹ️  Column media_filename already exists.')
 
 async def add_contacts_is_archived():
     async with engine.begin() as conn:

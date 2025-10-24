@@ -19,12 +19,15 @@ export interface Message {
   id: number
   direction: 'in' | 'out'
   content: string | null
-  kind: 'text' | 'template'
+  kind: 'text' | 'template' | 'media'
   template_name?: string
   created_at: string
   is_automated: boolean
   status?: 'sent' | 'delivered' | 'read'
   whatsapp_message_id?: string
+  media_url?: string | null
+  media_type?: string | null
+  media_filename?: string | null
 }
 
 export default function ConversationsPage() {

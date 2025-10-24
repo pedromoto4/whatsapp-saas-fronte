@@ -189,6 +189,9 @@ class MessageLogCreate(BaseModel):
     is_automated: Optional[bool] = False
     status: Optional[str] = "sent"  # sent, delivered, read
     whatsapp_message_id: Optional[str] = None
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None  # image, document, video, audio
+    media_filename: Optional[str] = None
 
 class MessageLogResponse(BaseModel):
     id: int
@@ -202,6 +205,9 @@ class MessageLogResponse(BaseModel):
     is_automated: Optional[bool] = False
     status: Optional[str] = "sent"
     whatsapp_message_id: Optional[str] = None
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None
+    media_filename: Optional[str] = None
     created_at: datetime
     
     class Config:
@@ -276,12 +282,15 @@ class ConversationMessageResponse(BaseModel):
     id: int
     direction: str  # in/out
     content: Optional[str]
-    kind: str  # text/template
+    kind: str  # text/template/media
     template_name: Optional[str]
     created_at: datetime
     is_automated: bool = False
     status: Optional[str] = "sent"  # sent, delivered, read
     whatsapp_message_id: Optional[str] = None
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None
+    media_filename: Optional[str] = None
     
     class Config:
         from_attributes = True
