@@ -385,8 +385,12 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     print(f"📦 Media info: {media_info}")
                     
                     # Get media URL from WhatsApp
-                    media_url = await whatsapp_service.get_media_url(media_info["id"])
-                    logger.info(f"🔗 Media URL obtained: {media_url}")
+                    try:
+                        media_url = await whatsapp_service.get_media_url(media_info["id"])
+                        print(f"🔗 Media URL obtained: {media_url}")
+                    except Exception as e:
+                        print(f"❌ Error getting media URL: {e}")
+                        media_url = None
                     
                     # Log incoming media message
                     caption = media_info.get("caption", "")
