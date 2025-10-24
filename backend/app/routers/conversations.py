@@ -230,7 +230,9 @@ async def archive_conversation(
         )
         await db.commit()
         
-        logger.info(f"Conversation with {phone_number} archived")
+        # Verify update
+        await db.refresh(contact)
+        logger.info(f"Conversation with {phone_number} archived. Contact ID: {contact.id}, is_archived: {getattr(contact, 'is_archived', 'N/A')}")
         return {"status": "success", "message": "Conversation archived"}
         
     except HTTPException:
