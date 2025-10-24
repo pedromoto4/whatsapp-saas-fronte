@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks } from '@phosphor-icons/react'
+import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks, Image, File, VideoCamera, MusicNote } from '@phosphor-icons/react'
 import type { Conversation, Message } from './ConversationsPage'
 
 interface ChatWindowProps {
@@ -86,6 +86,58 @@ export default function ChatWindow({
     }
   }
 
+  const renderMediaContent = (message: Message) => {
+    if (message.kind !== 'media' || !message.media_type) return null
+
+    const mediaType = message.media_type
+    const mediaUrl = message.media_url
+    const filename = message.media_filename || 'arquivo'
+
+    if (mediaType === 'image' && mediaUrl) {
+      return (
+        <div className="mb-2">
+          <img 
+            src={mediaUrl} 
+            alt="Imagem" 
+            className="max-w-full rounded-md max-h-64 object-cover"
+            onError={(e) => {
+              // Fallback if image fails to load
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          {message.content && message.content !== '[IMAGE]' && (
+            <p className="text-sm mt-2">{message.content}</p>
+          )}
+        </div>
+      )
+    }
+
+    // For other media types (document, video, audio), show icon + filename
+    let Icon = File
+    if (mediaType === 'video') Icon = VideoCamera
+    if (mediaType === 'audio') Icon = MusicNote
+
+    return (
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={24} />
+        <div className="flex-1">
+          <p className="text-sm font-medium">{filename}</p>
+          <p className="text-xs opacity-70">{mediaType.toUpperCase()}</p>
+        </div>
+        {mediaUrl && (
+          <a 
+            href={mediaUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs underline"
+          >
+            Abrir
+          </a>
+        )}
+      </div>
+    )
+  }
+
   if (!conversation) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-muted/20">
@@ -130,6 +182,7 @@ export default function ChatWindow({
             {messages.map((message) => {
               const isIncoming = message.direction === 'in'
               const content = message.content || `[Template: ${message.template_name}]`
+              const isMedia = message.kind === 'media'
 
               return (
                 <div
@@ -145,9 +198,15 @@ export default function ChatWindow({
                       }
                     `}
                   >
-                    <div className="flex items-start gap-2 mb-1">
-                      <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
-                    </div>
+                    {/* Render media content if it's a media message */}
+                    {isMedia && renderMediaContent(message)}
+                    
+                    {/* Render text content only if not media or if media has caption */}
+                    {!isMedia && (
+                      <div className="flex items-start gap-2 mb-1">
+                        <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
+                      </div>
+                    )}
                     
                     <div className="flex items-center justify-end gap-2 mt-1">
                       {message.is_automated && !isIncoming && (

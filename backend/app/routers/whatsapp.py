@@ -263,23 +263,24 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             messages = processed_data.get("messages", [])
             
             for msg in messages:
+                # Find or create contact
+                phone_number = f"+{msg['from']}"
+                contact = await get_contact_by_phone(db, phone_number)
+                
+                if not contact:
+                    # Create contact for incoming message
+                    contact_data = {
+                        "phone_number": phone_number,
+                        "name": phone_number,
+                        "owner_id": 1  # Default owner - should be improved
+                    }
+                    contact = await create_contact_from_webhook(db, contact_data)
+                
+                # Handle text messages
                 if msg.get("type") == "text" and msg.get("text"):
-                    # Find or create contact
-                    phone_number = f"+{msg['from']}"
-                    contact = await get_contact_by_phone(db, phone_number)
-                    
-                    if not contact:
-                        # Create contact for incoming message
-                        contact_data = {
-                            "phone_number": phone_number,
-                            "name": phone_number,
-                            "owner_id": 1  # Default owner - should be improved
-                        }
-                        contact = await create_contact_from_webhook(db, contact_data)
-                    
                     # Process incoming message
                     message_text = msg["text"]
-                    logger.info(f"Received message from {phone_number}: {message_text}")
+                    logger.info(f"Received text message from {phone_number}: {message_text}")
                     
                     # Log incoming message FIRST (before processing)
                     log_data = MessageLogCreate(
@@ -359,6 +360,33 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         "status": "received"
                     }
                     await create_message(db, message_data)
+                
+                # Handle media messages (image, document, video, audio)
+                elif msg.get("type") in ["image", "document", "video", "audio"] and msg.get("media"):
+                    media_info = msg["media"]
+                    media_type = msg["type"]
+                    logger.info(f"Received {media_type} from {phone_number}")
+                    
+                    # Get media URL from WhatsApp
+                    media_url = await whatsapp_service.get_media_url(media_info["id"])
+                    
+                    # Log incoming media message
+                    caption = media_info.get("caption", "")
+                    filename = media_info.get("filename", f"{media_type}_{media_info['id']}")
+                    
+                    log_data = MessageLogCreate(
+                        owner_id=contact.owner_id,
+                        direction="in",
+                        kind="media",
+                        to_from=phone_number,
+                        content=caption or f"[{media_type.upper()}]",
+                        cost_estimate="0.00",
+                        media_url=media_url,
+                        media_type=media_type,
+                        media_filename=filename
+                    )
+                    await create_message_log(db, log_data)
+                    logger.info(f"Logged {media_type} from {phone_number}")
             
             # Handle status updates (delivered, read)
             statuses = processed_data.get("statuses", [])

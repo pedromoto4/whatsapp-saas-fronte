@@ -114,6 +114,9 @@ class MessageLog(Base):
     is_automated = Column(Boolean, default=False)  # True se foi resposta automática (FAQ/Catalog)
     status = Column(String, default="sent")  # sent, delivered, read (apenas para mensagens 'out')
     whatsapp_message_id = Column(String, nullable=True)  # ID da mensagem no WhatsApp (para tracking)
+    media_url = Column(String, nullable=True)  # URL do arquivo de media
+    media_type = Column(String, nullable=True)  # image, document, video, audio
+    media_filename = Column(String, nullable=True)  # Nome original do arquivo
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
