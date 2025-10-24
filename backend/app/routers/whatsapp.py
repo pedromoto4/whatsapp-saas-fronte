@@ -365,10 +365,12 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 elif msg.get("type") in ["image", "document", "video", "audio"] and msg.get("media"):
                     media_info = msg["media"]
                     media_type = msg["type"]
-                    logger.info(f"Received {media_type} from {phone_number}")
+                    logger.info(f"🖼️ Received {media_type} from {phone_number}")
+                    logger.info(f"📦 Media info: {media_info}")
                     
                     # Get media URL from WhatsApp
                     media_url = await whatsapp_service.get_media_url(media_info["id"])
+                    logger.info(f"🔗 Media URL obtained: {media_url}")
                     
                     # Log incoming media message
                     caption = media_info.get("caption", "")
@@ -386,7 +388,7 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         media_filename=filename
                     )
                     await create_message_log(db, log_data)
-                    logger.info(f"Logged {media_type} from {phone_number}")
+                    logger.info(f"✅ Logged {media_type} from {phone_number} - URL: {media_url}, Type: {media_type}, Filename: {filename}")
             
             # Handle status updates (delivered, read)
             statuses = processed_data.get("statuses", [])
