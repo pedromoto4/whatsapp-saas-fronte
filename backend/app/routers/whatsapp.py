@@ -258,6 +258,10 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         # Process webhook data
         processed_data = await whatsapp_service.process_webhook(data)
         
+        # DEBUG: Log processed data
+        print(f"🔍 PROCESSED DATA: {processed_data}")
+        print(f"📬 MESSAGES COUNT: {len(processed_data.get('messages', []))}")
+        
         # Handle incoming messages
         if processed_data.get("status") == "success":
             messages = processed_data.get("messages", [])
