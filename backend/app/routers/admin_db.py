@@ -1,57 +1,78 @@
 """
-Admin Database Router - Temporary endpoint to run database migrations manually
+Temporary admin endpoints for database migrations
+Should be removed after migrations are complete
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-import logging
-
 from app.dependencies import get_db
 
-logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/admin/db", tags=["admin"])
 
-router = APIRouter(prefix="/admin/db", tags=["Admin"])
-
-@router.post("/add-is-archived-column")
-async def add_is_archived_column(db: AsyncSession = Depends(get_db)):
+@router.post("/add-media-columns")
+async def add_media_columns(db: AsyncSession = Depends(get_db)):
     """
-    Manually add is_archived column to contacts table
-    This is a temporary admin endpoint
+    Add media columns to message_logs table
+    Temporary endpoint - should be removed after migration
     """
     try:
-        # Check if column exists
+        # Check which columns already exist
         check_query = text("""
             SELECT column_name 
             FROM information_schema.columns 
-            WHERE table_name='contacts' 
-            AND column_name='is_archived'
+            WHERE table_name='message_logs' 
+            AND column_name IN ('media_url', 'media_type', 'media_filename')
         """)
         
         result = await db.execute(check_query)
-        exists = result.fetchone() is not None
+        existing_columns = {row[0] for row in result.fetchall()}
         
-        if not exists:
-            logger.info('Adding is_archived column to contacts table...')
+        messages = []
+        
+        # Add media_url if missing
+        if 'media_url' not in existing_columns:
             alter_query = text("""
-                ALTER TABLE contacts 
-                ADD COLUMN is_archived BOOLEAN DEFAULT FALSE
+                ALTER TABLE message_logs 
+                ADD COLUMN media_url VARCHAR;
             """)
             await db.execute(alter_query)
-            await db.commit()
-            return {
-                "status": "success",
-                "message": "✅ Column is_archived added successfully!"
-            }
+            messages.append("✅ Column media_url added successfully!")
         else:
-            return {
-                "status": "success",
-                "message": "ℹ️  Column is_archived already exists."
-            }
+            messages.append("ℹ️  Column media_url already exists.")
+        
+        # Add media_type if missing
+        if 'media_type' not in existing_columns:
+            alter_query = text("""
+                ALTER TABLE message_logs 
+                ADD COLUMN media_type VARCHAR;
+            """)
+            await db.execute(alter_query)
+            messages.append("✅ Column media_type added successfully!")
+        else:
+            messages.append("ℹ️  Column media_type already exists.")
+        
+        # Add media_filename if missing
+        if 'media_filename' not in existing_columns:
+            alter_query = text("""
+                ALTER TABLE message_logs 
+                ADD COLUMN media_filename VARCHAR;
+            """)
+            await db.execute(alter_query)
+            messages.append("✅ Column media_filename added successfully!")
+        else:
+            messages.append("ℹ️  Column media_filename already exists.")
+        
+        await db.commit()
+        
+        return {
+            "status": "success",
+            "message": " | ".join(messages),
+            "columns_added": len([m for m in messages if "added" in m])
+        }
         
     except Exception as e:
-        logger.error(f"Migration error: {e}")
+        await db.rollback()
         return {
             "status": "error",
-            "error": str(e)
+            "message": f"Failed to add columns: {str(e)}"
         }
-
