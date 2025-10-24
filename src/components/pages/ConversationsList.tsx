@@ -62,18 +62,6 @@ export default function ConversationsList({
     )
   }
 
-  if (conversations.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <ChatCircle size={64} className="text-muted-foreground mb-4" />
-        <h3 className="font-semibold text-lg mb-2">Nenhuma conversa</h3>
-        <p className="text-sm text-muted-foreground">
-          As conversas aparecerão aqui quando receber mensagens
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -114,8 +102,24 @@ export default function ConversationsList({
         </Button>
       </div>
 
-      {/* Conversations list */}
-      <ScrollArea className="flex-1">
+      {/* Conversations list or empty state */}
+      {conversations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center flex-1 p-8 text-center">
+          <ChatCircle size={64} className="text-muted-foreground mb-4" />
+          <h3 className="font-semibold text-lg mb-2">
+            {searchQuery || showOnlyUnread ? 'Nenhum resultado' : 'Nenhuma conversa'}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {searchQuery 
+              ? 'Tente buscar por outro nome ou número'
+              : showOnlyUnread
+              ? 'Não há conversas não lidas no momento'
+              : 'As conversas aparecerão aqui quando receber mensagens'
+            }
+          </p>
+        </div>
+      ) : (
+        <ScrollArea className="flex-1">
         {conversations.map((conversation) => {
           const isActive = conversation.phone_number === activeConversation
           const displayName = conversation.contact_name || conversation.phone_number
@@ -173,7 +177,8 @@ export default function ConversationsList({
             </div>
           )
         })}
-      </ScrollArea>
+        </ScrollArea>
+      )}
     </div>
   )
 }
