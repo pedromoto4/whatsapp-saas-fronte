@@ -285,6 +285,12 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     }
                     contact = await create_contact_from_webhook(db, contact_data)
                 
+                # DEBUG: Check message type and conditions
+                print(f"🔍 MESSAGE TYPE: {msg.get('type')}")
+                print(f"🔍 HAS TEXT: {bool(msg.get('text'))}")
+                print(f"🔍 HAS MEDIA: {bool(msg.get('media'))}")
+                print(f"🔍 IS IMAGE TYPE: {msg.get('type') in ['image', 'document', 'video', 'audio']}")
+                
                 # Handle text messages
                 if msg.get("type") == "text" and msg.get("text"):
                     # Process incoming message
