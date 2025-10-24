@@ -69,12 +69,6 @@ export default function ConversationsPage() {
       if (response.ok) {
         const data = await response.json()
         
-        // Debug: log conversations with archive status
-        console.log('Conversations loaded:', data.map((c: Conversation) => ({ 
-          phone: c.phone_number, 
-          archived: c.is_archived 
-        })))
-        
         // Calculate total unread count
         const totalUnread = data.reduce((sum: number, conv: Conversation) => sum + conv.unread_count, 0)
         
