@@ -32,6 +32,8 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const previousUnreadCountRef = useRef<number>(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showOnlyUnread, setShowOnlyUnread] = useState(false)
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
 
@@ -222,15 +224,32 @@ export default function ConversationsPage() {
     }
   }, [conversations])
 
+  // Filter conversations based on search and unread filter
+  const filteredConversations = conversations.filter(conv => {
+    // Search filter
+    const matchesSearch = searchQuery === '' || 
+      (conv.contact_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      conv.phone_number.includes(searchQuery)
+    
+    // Unread filter
+    const matchesUnread = !showOnlyUnread || conv.unread_count > 0
+    
+    return matchesSearch && matchesUnread
+  })
+
   return (
     <div className="h-[calc(100vh-120px)] flex gap-0 border rounded-lg overflow-hidden bg-background">
       {/* Left sidebar - Conversations list */}
       <div className="w-[380px] border-r flex-shrink-0">
         <ConversationsList
-          conversations={conversations}
+          conversations={filteredConversations}
           activeConversation={activeConversation}
           onSelectConversation={handleConversationSelect}
           loading={loading}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          showOnlyUnread={showOnlyUnread}
+          onToggleUnread={() => setShowOnlyUnread(!showOnlyUnread)}
         />
       </div>
 
