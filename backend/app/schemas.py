@@ -269,6 +269,8 @@ class ConversationResponse(BaseModel):
     direction: str  # in/out
     unread_count: int = 0
     is_automated: bool = False
+    is_archived: bool = False
+    tags: Optional[str] = None
     
 class ConversationMessageResponse(BaseModel):
     id: int
