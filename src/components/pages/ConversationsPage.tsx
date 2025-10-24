@@ -11,6 +11,8 @@ export interface Conversation {
   direction: 'in' | 'out'
   unread_count: number
   is_automated: boolean
+  is_archived: boolean
+  tags?: string | null
 }
 
 export interface Message {
@@ -34,6 +36,7 @@ export default function ConversationsPage() {
   const previousUnreadCountRef = useRef<number>(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [showOnlyUnread, setShowOnlyUnread] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
 
@@ -224,8 +227,40 @@ export default function ConversationsPage() {
     }
   }, [conversations])
 
-  // Filter conversations based on search and unread filter
+  // Archive/Unarchive conversation
+  const toggleArchive = async (phoneNumber: string, isArchived: boolean) => {
+    const token = getAuthToken()
+    if (!token) return
+
+    try {
+      const endpoint = isArchived ? 'unarchive' : 'archive'
+      const response = await fetch(
+        `${API_BASE_URL}/api/conversations/${encodeURIComponent(phoneNumber)}/${endpoint}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.ok) {
+        toast.success(isArchived ? 'Conversa desarquivada' : 'Conversa arquivada')
+        loadConversations(true) // Reload conversations
+      } else {
+        toast.error('Erro ao arquivar conversa')
+      }
+    } catch (error) {
+      toast.error('Erro de conexão')
+    }
+  }
+
+  // Filter conversations based on search, unread, and archive filters
   const filteredConversations = conversations.filter(conv => {
+    // Archive filter
+    const matchesArchive = showArchived ? conv.is_archived : !conv.is_archived
+    
     // Search filter
     const matchesSearch = searchQuery === '' || 
       (conv.contact_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -234,7 +269,7 @@ export default function ConversationsPage() {
     // Unread filter
     const matchesUnread = !showOnlyUnread || conv.unread_count > 0
     
-    return matchesSearch && matchesUnread
+    return matchesArchive && matchesSearch && matchesUnread
   })
 
   return (
@@ -250,6 +285,9 @@ export default function ConversationsPage() {
           onSearchChange={setSearchQuery}
           showOnlyUnread={showOnlyUnread}
           onToggleUnread={() => setShowOnlyUnread(!showOnlyUnread)}
+          showArchived={showArchived}
+          onToggleArchived={() => setShowArchived(!showArchived)}
+          onToggleArchive={toggleArchive}
         />
       </div>
 
