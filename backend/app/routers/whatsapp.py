@@ -261,10 +261,12 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         # DEBUG: Log processed data
         print(f"🔍 PROCESSED DATA: {processed_data}")
         print(f"📬 MESSAGES COUNT: {len(processed_data.get('messages', []))}")
+        print(f"✅ STATUS: {processed_data.get('status')}")
         
         # Handle incoming messages
         if processed_data.get("status") == "success":
             messages = processed_data.get("messages", [])
+            print(f"🔄 ENTERING MESSAGE LOOP with {len(messages)} messages")
             
             for msg in messages:
                 # DEBUG: Log raw message
