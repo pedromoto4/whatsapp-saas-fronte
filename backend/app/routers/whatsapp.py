@@ -258,20 +258,11 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         # Process webhook data
         processed_data = await whatsapp_service.process_webhook(data)
         
-        # DEBUG: Log processed data
-        print(f"🔍 PROCESSED DATA: {processed_data}")
-        print(f"📬 MESSAGES COUNT: {len(processed_data.get('messages', []))}")
-        print(f"✅ STATUS: {processed_data.get('status')}")
-        
         # Handle incoming messages
         if processed_data.get("status") == "success":
             messages = processed_data.get("messages", [])
-            print(f"🔄 ENTERING MESSAGE LOOP with {len(messages)} messages")
             
             for msg in messages:
-                # DEBUG: Log raw message
-                print(f"📨 RAW MESSAGE from webhook: {msg}")
-                
                 # Find or create contact
                 phone_number = f"+{msg['from']}"
                 contact = await get_contact_by_phone(db, phone_number)
@@ -284,12 +275,6 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         "owner_id": 1  # Default owner - should be improved
                     }
                     contact = await create_contact_from_webhook(db, contact_data)
-                
-                # DEBUG: Check message type and conditions
-                print(f"🔍 MESSAGE TYPE: {msg.get('type')}")
-                print(f"🔍 HAS TEXT: {bool(msg.get('text'))}")
-                print(f"🔍 HAS MEDIA: {bool(msg.get('media'))}")
-                print(f"🔍 IS IMAGE TYPE: {msg.get('type') in ['image', 'document', 'video', 'audio']}")
                 
                 # Handle text messages
                 if msg.get("type") == "text" and msg.get("text"):
@@ -378,18 +363,15 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 
                 # Handle media messages (image, document, video, audio)
                 elif msg.get("type") in ["image", "document", "video", "audio"] and msg.get("media"):
-                    print(f"🎯 ENTERING MEDIA BLOCK!")
                     media_info = msg["media"]
                     media_type = msg["type"]
-                    print(f"🖼️ Received {media_type} from {phone_number}")
-                    print(f"📦 Media info: {media_info}")
+                    logger.info(f"Received {media_type} from {phone_number}")
                     
                     # Get media URL from WhatsApp
                     try:
                         media_url = await whatsapp_service.get_media_url(media_info["id"])
-                        print(f"🔗 Media URL obtained: {media_url}")
                     except Exception as e:
-                        print(f"❌ Error getting media URL: {e}")
+                        logger.error(f"Error getting media URL: {e}")
                         media_url = None
                     
                     # Log incoming media message
@@ -409,9 +391,9 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             media_filename=filename
                         )
                         await create_message_log(db, log_data)
-                        print(f"✅ Logged {media_type} from {phone_number} - URL: {media_url}, Type: {media_type}, Filename: {filename}")
+                        logger.info(f"Logged {media_type} from {phone_number}")
                     except Exception as e:
-                        print(f"❌ Error saving media message: {e}")
+                        logger.error(f"Error saving media message: {e}")
             
             # Handle status updates (delivered, read)
             statuses = processed_data.get("statuses", [])
