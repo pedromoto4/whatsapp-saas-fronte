@@ -618,9 +618,11 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
         # Build conversations list
         conversations = []
         for phone_number, msg in phone_to_latest.items():
-            # Try to find contact name
+            # Try to find contact info
             contact = await get_contact_by_phone(db, phone_number)
             contact_name = contact.name if contact else None
+            is_archived = contact.is_archived if contact else False
+            tags = contact.tags if contact else None
             
             # Check if last message was automated (from database or if it's a template)
             is_automated = msg.is_automated or bool(msg.template_name)
@@ -671,7 +673,9 @@ async def get_conversations(db: AsyncSession, owner_id: int) -> List[dict]:
                 'last_message_time': msg.created_at,
                 'direction': msg.direction,
                 'unread_count': unread_count,
-                'is_automated': is_automated
+                'is_automated': is_automated,
+                'is_archived': is_archived,
+                'tags': tags
             })
         
         # Sort by last message time (most recent first)

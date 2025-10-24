@@ -183,3 +183,79 @@ async def send_message(
             detail=f"Failed to send message: {str(e)}"
         )
 
+@router.post("/{phone_number}/archive")
+async def archive_conversation(
+    phone_number: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Archive a conversation"""
+    try:
+        contact = await get_contact_by_phone(db, phone_number)
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Contact not found"
+            )
+        
+        # Update contact to archived
+        from sqlalchemy import update
+        from app.models import Contact
+        
+        await db.execute(
+            update(Contact)
+            .where(Contact.id == contact.id)
+            .values(is_archived=True)
+        )
+        await db.commit()
+        
+        logger.info(f"Conversation with {phone_number} archived")
+        return {"status": "success", "message": "Conversation archived"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error archiving conversation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to archive conversation: {str(e)}"
+        )
+
+@router.post("/{phone_number}/unarchive")
+async def unarchive_conversation(
+    phone_number: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Unarchive a conversation"""
+    try:
+        contact = await get_contact_by_phone(db, phone_number)
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Contact not found"
+            )
+        
+        # Update contact to unarchived
+        from sqlalchemy import update
+        from app.models import Contact
+        
+        await db.execute(
+            update(Contact)
+            .where(Contact.id == contact.id)
+            .values(is_archived=False)
+        )
+        await db.commit()
+        
+        logger.info(f"Conversation with {phone_number} unarchived")
+        return {"status": "success", "message": "Conversation unarchived"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unarchiving conversation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to unarchive conversation: {str(e)}"
+        )
+

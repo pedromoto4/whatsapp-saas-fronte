@@ -69,8 +69,33 @@ async def add_missing_columns():
         else:
             print('ℹ️  Column whatsapp_message_id already exists.')
 
+async def add_contacts_is_archived():
+    async with engine.begin() as conn:
+        # Check if is_archived column exists in contacts table
+        check_query = text('''
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name=\'contacts\' 
+            AND column_name=\'is_archived\';
+        ''')
+        
+        result = await conn.execute(check_query)
+        exists = result.fetchone() is not None
+        
+        if not exists:
+            print('Adding is_archived column to contacts table...')
+            alter_query = text('''
+                ALTER TABLE contacts 
+                ADD COLUMN is_archived BOOLEAN DEFAULT FALSE;
+            ''')
+            await conn.execute(alter_query)
+            print('✅ Column is_archived added successfully!')
+        else:
+            print('ℹ️  Column is_archived already exists in contacts.')
+
 asyncio.run(create_tables())
 asyncio.run(add_missing_columns())
+asyncio.run(add_contacts_is_archived())
 "
 
 echo "Starting FastAPI application on port $APP_PORT"

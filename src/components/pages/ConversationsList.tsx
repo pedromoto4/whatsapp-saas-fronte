@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { ChatCircle, Robot, MagnifyingGlass, Funnel, X } from '@phosphor-icons/react'
+import { ChatCircle, Robot, MagnifyingGlass, Funnel, X, ArchiveBox, Tag } from '@phosphor-icons/react'
 import type { Conversation } from './ConversationsPage'
 
 interface ConversationsListProps {
@@ -15,6 +15,9 @@ interface ConversationsListProps {
   onSearchChange: (query: string) => void
   showOnlyUnread: boolean
   onToggleUnread: () => void
+  showArchived: boolean
+  onToggleArchived: () => void
+  onToggleArchive: (phoneNumber: string, isArchived: boolean) => void
 }
 
 export default function ConversationsList({
@@ -25,7 +28,10 @@ export default function ConversationsList({
   searchQuery,
   onSearchChange,
   showOnlyUnread,
-  onToggleUnread
+  onToggleUnread,
+  showArchived,
+  onToggleArchived,
+  onToggleArchive
 }: ConversationsListProps) {
   
   const getInitials = (name?: string) => {
@@ -90,16 +96,27 @@ export default function ConversationsList({
           )}
         </div>
         
-        {/* Filter button */}
-        <Button
-          variant={showOnlyUnread ? "default" : "outline"}
-          size="sm"
-          onClick={onToggleUnread}
-          className="w-full"
-        >
-          <Funnel size={16} className="mr-2" />
-          {showOnlyUnread ? 'Mostrar todas' : 'Apenas não lidas'}
-        </Button>
+        {/* Filter buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant={showOnlyUnread ? "default" : "outline"}
+            size="sm"
+            onClick={onToggleUnread}
+            className="flex-1"
+          >
+            <Funnel size={16} className="mr-2" />
+            {showOnlyUnread ? 'Todas' : 'Não lidas'}
+          </Button>
+          <Button
+            variant={showArchived ? "default" : "outline"}
+            size="sm"
+            onClick={onToggleArchived}
+            className="flex-1"
+          >
+            <ArchiveBox size={16} className="mr-2" />
+            {showArchived ? 'Ativas' : 'Arquivadas'}
+          </Button>
+        </div>
       </div>
 
       {/* Conversations list or empty state */}
@@ -123,18 +140,31 @@ export default function ConversationsList({
         {conversations.map((conversation) => {
           const isActive = conversation.phone_number === activeConversation
           const displayName = conversation.contact_name || conversation.phone_number
+          const tags = conversation.tags ? JSON.parse(conversation.tags) : []
 
           return (
             <div
               key={conversation.phone_number}
-              onClick={() => onSelectConversation(conversation.phone_number)}
               className={`
-                flex items-start gap-3 p-4 border-b cursor-pointer transition-colors
+                flex items-start gap-3 p-4 border-b transition-colors relative group
                 hover:bg-accent
                 ${isActive ? 'bg-accent border-l-4 border-l-primary' : ''}
                 ${conversation.unread_count > 0 && !isActive ? 'bg-primary/5 font-semibold' : ''}
               `}
             >
+              {/* Archive button (shows on hover) */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleArchive(conversation.phone_number, conversation.is_archived)
+                }}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-background rounded"
+                title={conversation.is_archived ? 'Desarquivar' : 'Arquivar'}
+              >
+                <ArchiveBox size={18} className={conversation.is_archived ? 'text-primary' : 'text-muted-foreground'} />
+              </button>
+
+              <div onClick={() => onSelectConversation(conversation.phone_number)} className="flex items-start gap-3 flex-1 cursor-pointer">
               {/* Avatar */}
               <Avatar className="h-12 w-12 flex-shrink-0">
                 <AvatarFallback className="bg-primary/10 text-primary">
@@ -160,7 +190,7 @@ export default function ConversationsList({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {conversation.is_automated && (
                     <Badge variant="secondary" className="text-xs">
                       <Robot size={12} className="mr-1" />
@@ -172,7 +202,14 @@ export default function ConversationsList({
                       {conversation.unread_count}
                     </Badge>
                   )}
+                  {tags.length > 0 && tags.map((tag: string, idx: number) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      <Tag size={10} className="mr-1" />
+                      {tag}
+                    </Badge>
+                  ))}
                 </div>
+              </div>
               </div>
             </div>
           )
