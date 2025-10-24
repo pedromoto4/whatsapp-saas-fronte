@@ -184,6 +184,16 @@ export default function ChatWindow({
               const content = message.content || `[Template: ${message.template_name}]`
               const isMedia = message.kind === 'media'
 
+              // Debug: Check if this is a media message
+              if (message.kind === 'media') {
+                console.log('🎯 MEDIA MESSAGE FOUND:', {
+                  kind: message.kind,
+                  media_type: message.media_type,
+                  media_url: message.media_url,
+                  content: message.content
+                })
+              }
+
               return (
                 <div
                   key={message.id}
