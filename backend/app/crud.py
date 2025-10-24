@@ -735,7 +735,10 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
                 MessageLog.content,
                 MessageLog.template_name,
                 MessageLog.cost_estimate,
-                MessageLog.created_at
+                MessageLog.created_at,
+                MessageLog.media_url,
+                MessageLog.media_type,
+                MessageLog.media_filename
             )
             .where(
                 MessageLog.owner_id == owner_id,
@@ -760,9 +763,9 @@ async def get_conversation_messages(db: AsyncSession, owner_id: int, phone_numbe
                 'is_automated': False,
                 'status': 'sent',
                 'whatsapp_message_id': None,
-                'media_url': None,
-                'media_type': None,
-                'media_filename': None
+                'media_url': row.media_url,
+                'media_type': row.media_type,
+                'media_filename': row.media_filename
             })()
             messages.append(msg)
         return messages
