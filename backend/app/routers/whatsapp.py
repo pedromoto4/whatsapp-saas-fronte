@@ -39,9 +39,13 @@ async def download_and_save_media(media_url: str, media_id: str, media_type: str
         filename = f"{media_id}.{file_extension}"
         local_path = MEDIA_DIR / filename
         
-        # Download the file
+        # Download the file with WhatsApp access token
+        headers = {}
+        if whatsapp_service.access_token:
+            headers["Authorization"] = f"Bearer {whatsapp_service.access_token}"
+        
         async with httpx.AsyncClient() as client:
-            response = await client.get(media_url)
+            response = await client.get(media_url, headers=headers)
             response.raise_for_status()
             
             # Save to local file
@@ -426,7 +430,7 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         logger.error(f"Error getting media URL: {e}")
                         media_url = None
                     
-                    # Download and save media locally
+                    # Try to download and save media locally
                     local_media_path = None
                     if media_url:
                         try:
@@ -435,8 +439,10 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                 media_info["id"], 
                                 media_info.get("mime_type", f"{media_type}/unknown")
                             )
+                            logger.info(f"Successfully downloaded media {media_info['id']} locally")
                         except Exception as e:
-                            logger.error(f"Error downloading media: {e}")
+                            logger.warning(f"Could not download media {media_info['id']} locally: {e}")
+                            logger.info(f"Will use WhatsApp URL as fallback: {media_url}")
                     
                     # Log incoming media message
                     try:
