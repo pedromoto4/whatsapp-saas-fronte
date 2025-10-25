@@ -87,13 +87,25 @@ export default function ChatWindow({
   }
 
   const renderMediaContent = (message: Message) => {
-    if (message.kind !== 'media' || !message.media_type) return null
+    console.log('🎨 renderMediaContent called:', {
+      kind: message.kind,
+      media_type: message.media_type,
+      media_url: message.media_url
+    })
+    
+    if (message.kind !== 'media' || !message.media_type) {
+      console.log('❌ Not a media message or no media_type')
+      return null
+    }
 
     const mediaType = message.media_type
     const mediaUrl = message.media_url
     const filename = message.media_filename || 'arquivo'
 
+    console.log('🎨 Rendering media:', { mediaType, mediaUrl, filename })
+
     if (mediaType === 'image' && mediaUrl) {
+      console.log('🖼️ Rendering image with URL:', mediaUrl)
       return (
         <div className="mb-2">
           <img 
@@ -101,9 +113,11 @@ export default function ChatWindow({
             alt="Imagem" 
             className="max-w-full rounded-md max-h-64 object-cover"
             onError={(e) => {
+              console.log('❌ Image failed to load:', e)
               // Fallback if image fails to load
               e.currentTarget.style.display = 'none'
             }}
+            onLoad={() => console.log('✅ Image loaded successfully')}
           />
           {message.content && message.content !== '[IMAGE]' && (
             <p className="text-sm mt-2">{message.content}</p>
