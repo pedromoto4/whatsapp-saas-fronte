@@ -120,7 +120,7 @@ export default function ChatWindow({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          phone_number: conversation.phone,
+          phone_number: conversation.phone_number,
           media_url: uploadedFile.public_url,
           media_type: uploadedFile.media_type,
           caption: newMessage || ''
