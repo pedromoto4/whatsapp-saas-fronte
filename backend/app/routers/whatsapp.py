@@ -3,10 +3,14 @@ WhatsApp Business API Router
 Handles WhatsApp-specific endpoints and webhooks
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, List, Any, Optional
 import logging
 import os
+import httpx
+import uuid
+from pathlib import Path
 
 from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
@@ -16,6 +20,40 @@ from app.crud import create_message, get_contact_by_phone, create_contact_from_w
 from app.schemas import MessageLogCreate
 
 logger = logging.getLogger(__name__)
+
+# Create media directory if it doesn't exist
+MEDIA_DIR = Path("media")
+MEDIA_DIR.mkdir(exist_ok=True)
+
+async def download_and_save_media(media_url: str, media_id: str, media_type: str) -> Optional[str]:
+    """
+    Download media from WhatsApp URL and save locally
+    Returns the local file path if successful, None otherwise
+    """
+    if not media_url:
+        return None
+    
+    try:
+        # Generate unique filename
+        file_extension = media_type.split('/')[-1] if '/' in media_type else 'bin'
+        filename = f"{media_id}.{file_extension}"
+        local_path = MEDIA_DIR / filename
+        
+        # Download the file
+        async with httpx.AsyncClient() as client:
+            response = await client.get(media_url)
+            response.raise_for_status()
+            
+            # Save to local file
+            with open(local_path, 'wb') as f:
+                f.write(response.content)
+            
+            logger.info(f"Downloaded media {media_id} to {local_path}")
+            return str(local_path)
+            
+    except Exception as e:
+        logger.error(f"Error downloading media {media_id}: {e}")
+        return None
 
 router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
 
@@ -27,6 +65,20 @@ async def get_whatsapp_status():
         "service": "WhatsApp Business API",
         "demo_mode": not whatsapp_service.is_configured()
     }
+
+@router.get("/media/{filename}")
+async def serve_media(filename: str):
+    """Serve media files from local storage"""
+    file_path = MEDIA_DIR / filename
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Media file not found")
+    
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/jpeg",  # Default to image, could be improved with proper MIME detection
+        filename=filename
+    )
 
 @router.post("/send-message")
 async def send_whatsapp_message(
@@ -374,10 +426,25 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         logger.error(f"Error getting media URL: {e}")
                         media_url = None
                     
+                    # Download and save media locally
+                    local_media_path = None
+                    if media_url:
+                        try:
+                            local_media_path = await download_and_save_media(
+                                media_url, 
+                                media_info["id"], 
+                                media_info.get("mime_type", f"{media_type}/unknown")
+                            )
+                        except Exception as e:
+                            logger.error(f"Error downloading media: {e}")
+                    
                     # Log incoming media message
                     try:
                         caption = media_info.get("caption", "")
                         filename = media_info.get("filename", f"{media_type}_{media_info['id']}")
+                        
+                        # Use local path if available, otherwise use WhatsApp URL
+                        final_media_url = local_media_path if local_media_path else media_url
                         
                         log_data = MessageLogCreate(
                             owner_id=contact.owner_id,
@@ -386,12 +453,12 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             to_from=phone_number,
                             content=caption or f"[{media_type.upper()}]",
                             cost_estimate="0.00",
-                            media_url=media_url,
+                            media_url=final_media_url,
                             media_type=media_type,
                             media_filename=filename
                         )
                         await create_message_log(db, log_data)
-                        logger.info(f"Logged {media_type} from {phone_number}")
+                        logger.info(f"Logged {media_type} from {phone_number} (local: {local_media_path is not None})")
                     except Exception as e:
                         logger.error(f"Error saving media message: {e}")
             

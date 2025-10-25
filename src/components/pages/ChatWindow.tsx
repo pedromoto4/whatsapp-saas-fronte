@@ -94,10 +94,16 @@ export default function ChatWindow({
     const filename = message.media_filename || 'arquivo'
 
     if (mediaType === 'image' && mediaUrl) {
+      // Check if it's a local path or WhatsApp URL
+      const isLocalPath = mediaUrl.startsWith('media/') || mediaUrl.includes('/media/')
+      const imageUrl = isLocalPath 
+        ? `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl.split('/').pop()}`
+        : mediaUrl
+        
       return (
         <div className="mb-2">
           <img 
-            src={mediaUrl} 
+            src={imageUrl} 
             alt="Imagem" 
             className="max-w-full rounded-md max-h-64 object-cover"
             onError={(e) => {
@@ -115,7 +121,7 @@ export default function ChatWindow({
               <p className="text-xs text-muted-foreground">Não foi possível carregar a imagem</p>
             </div>
             <a 
-              href={mediaUrl} 
+              href={imageUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-xs underline"
@@ -135,6 +141,12 @@ export default function ChatWindow({
     if (mediaType === 'video') Icon = VideoCamera
     if (mediaType === 'audio') Icon = MusicNote
 
+    // Check if it's a local path or WhatsApp URL
+    const isLocalPath = mediaUrl && (mediaUrl.startsWith('media/') || mediaUrl.includes('/media/'))
+    const finalMediaUrl = isLocalPath 
+      ? `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl.split('/').pop()}`
+      : mediaUrl
+
     return (
       <div className="flex items-center gap-2 mb-2">
         <Icon size={24} />
@@ -142,9 +154,9 @@ export default function ChatWindow({
           <p className="text-sm font-medium">{filename}</p>
           <p className="text-xs opacity-70">{mediaType.toUpperCase()}</p>
         </div>
-        {mediaUrl && (
+        {finalMediaUrl && (
           <a 
-            href={mediaUrl} 
+            href={finalMediaUrl} 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-xs underline"
