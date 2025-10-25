@@ -190,10 +190,7 @@ async def serve_uploaded_file(filename: str):
 
 @router.post("/send-media")
 async def send_media_message(
-    phone_number: str = Query(..., description="Phone number to send to"),
-    media_url: str = Query(..., description="Public URL of the media file"),
-    media_type: str = Query(..., description="Type of media (image, document, video, audio)"),
-    caption: str = Query("", description="Optional caption for the media"),
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -201,6 +198,19 @@ async def send_media_message(
     Send media message via WhatsApp
     """
     try:
+        # Get data from request body
+        data = await request.json()
+        phone_number = data.get("phone_number")
+        media_url = data.get("media_url")
+        media_type = data.get("media_type")
+        caption = data.get("caption", "")
+        
+        if not phone_number or not media_url or not media_type:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required fields: phone_number, media_url, media_type"
+            )
+        
         # Find or create contact
         contact = await get_contact_by_phone(db, phone_number)
         if not contact:
