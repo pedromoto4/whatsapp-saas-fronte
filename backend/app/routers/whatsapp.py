@@ -200,12 +200,17 @@ async def send_media_message(
     try:
         # Get data from request body
         data = await request.json()
+        logger.info(f"Received send-media request: {data}")
+        
         phone_number = data.get("phone_number")
         media_url = data.get("media_url")
         media_type = data.get("media_type")
         caption = data.get("caption", "")
         
+        logger.info(f"Parsed data - phone: {phone_number}, media_url: {media_url}, media_type: {media_type}, caption: {caption}")
+        
         if not phone_number or not media_url or not media_type:
+            logger.error(f"Missing required fields - phone: {phone_number}, media_url: {media_url}, media_type: {media_type}")
             raise HTTPException(
                 status_code=400,
                 detail="Missing required fields: phone_number, media_url, media_type"
@@ -222,12 +227,14 @@ async def send_media_message(
             contact = await create_contact_from_webhook(db, contact_data)
         
         # Send media via WhatsApp
+        logger.info(f"Sending media to WhatsApp - to: {phone_number}, media_url: {media_url}, media_type: {media_type}")
         result = await whatsapp_service.send_media_message(
             to=phone_number,
             media_url=media_url,
             media_type=media_type,
             caption=caption
         )
+        logger.info(f"WhatsApp response: {result}")
         
         # Log outgoing media message
         log_data = MessageLogCreate(
@@ -253,7 +260,7 @@ async def send_media_message(
         }
         
     except Exception as e:
-        logger.error(f"Error sending media message: {e}")
+        logger.error(f"Error sending media message: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send media message: {str(e)}"
