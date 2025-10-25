@@ -87,25 +87,13 @@ export default function ChatWindow({
   }
 
   const renderMediaContent = (message: Message) => {
-    console.log('🎨 renderMediaContent called:', {
-      kind: message.kind,
-      media_type: message.media_type,
-      media_url: message.media_url
-    })
-    
-    if (message.kind !== 'media' || !message.media_type) {
-      console.log('❌ Not a media message or no media_type')
-      return null
-    }
+    if (message.kind !== 'media' || !message.media_type) return null
 
     const mediaType = message.media_type
     const mediaUrl = message.media_url
     const filename = message.media_filename || 'arquivo'
 
-    console.log('🎨 Rendering media:', { mediaType, mediaUrl, filename })
-
     if (mediaType === 'image' && mediaUrl) {
-      console.log('🖼️ Rendering image with URL:', mediaUrl)
       return (
         <div className="mb-2">
           <img 
@@ -113,12 +101,28 @@ export default function ChatWindow({
             alt="Imagem" 
             className="max-w-full rounded-md max-h-64 object-cover"
             onError={(e) => {
-              console.log('❌ Image failed to load:', e)
-              // Fallback if image fails to load
+              // Show fallback when image fails to load
               e.currentTarget.style.display = 'none'
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement
+              if (fallback) fallback.style.display = 'block'
             }}
-            onLoad={() => console.log('✅ Image loaded successfully')}
           />
+          {/* Fallback when image fails to load */}
+          <div className="hidden flex items-center gap-2 p-3 bg-muted rounded-md">
+            <Image size={24} />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Imagem</p>
+              <p className="text-xs text-muted-foreground">Não foi possível carregar a imagem</p>
+            </div>
+            <a 
+              href={mediaUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs underline"
+            >
+              Abrir
+            </a>
+          </div>
           {message.content && message.content !== '[IMAGE]' && (
             <p className="text-sm mt-2">{message.content}</p>
           )}
@@ -198,15 +202,6 @@ export default function ChatWindow({
               const content = message.content || `[Template: ${message.template_name}]`
               const isMedia = message.kind === 'media'
 
-              // Debug: Check if this is a media message
-              if (message.kind === 'media') {
-                console.log('🎯 MEDIA MESSAGE FOUND:', {
-                  kind: message.kind,
-                  media_type: message.media_type,
-                  media_url: message.media_url,
-                  content: message.content
-                })
-              }
 
               return (
                 <div
