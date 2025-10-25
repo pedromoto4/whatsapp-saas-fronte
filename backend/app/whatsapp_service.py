@@ -109,6 +109,100 @@ class WhatsAppService:
                 except:
                     pass
             raise Exception(f"Failed to send WhatsApp message: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error sending message: {e}")
+            raise Exception(f"Failed to send WhatsApp message: {e}")
+
+    async def send_media_message(self, to: str, media_url: str, media_type: str, caption: str = "") -> Dict[str, Any]:
+        """
+        Send a media message via WhatsApp Business API
+        
+        Args:
+            to: Phone number in international format (e.g., +5511999999999)
+            media_url: Public URL of the media file
+            media_type: Type of media (image, document, video, audio)
+            caption: Optional caption for the media
+        
+        Returns:
+            Dict with API response
+        """
+        if not self.access_token or not self.phone_number_id:
+            # Demo mode - return mock response
+            return {
+                "messaging_product": "whatsapp",
+                "contacts": [{"input": to, "wa_id": to.replace("+", "")}],
+                "messages": [{"id": f"demo_media_{datetime.now().timestamp()}"}]
+            }
+        
+        # Normalize phone number
+        normalized_to = to.strip()
+        if not normalized_to.startswith('+'):
+            normalized_to = '+' + normalized_to
+        
+        # Log attempt
+        logger.info(f"Attempting to send {media_type} to: {normalized_to}")
+        logger.info(f"Media URL: {media_url}")
+        
+        url = f"{self.base_url}/{self.phone_number_id}/messages"
+        
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # Build media payload based on type
+        media_payload = {
+            "link": media_url
+        }
+        
+        if caption:
+            media_payload["caption"] = caption
+        
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": normalized_to,
+            "type": media_type,
+            media_type: media_payload
+        }
+        
+        logger.info(f"Media payload: {json.dumps(payload, indent=2)}")
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload)
+                
+                # Log detailed response for debugging
+                logger.info(f"WhatsApp API Response Status: {response.status_code}")
+                logger.info(f"WhatsApp API Response Body: {response.text}")
+                
+                response.raise_for_status()
+                response_data = response.json()
+                
+                # Add delivery status information
+                if response_data.get("messages"):
+                    message_id = response_data["messages"][0].get("id")
+                    logger.info(f"Media message sent successfully with ID: {message_id}")
+                    
+                    response_data["delivery_info"] = {
+                        "message_id": message_id,
+                        "status": "sent",
+                        "media_type": media_type,
+                        "note": "Media message sent to WhatsApp. Delivery depends on 24h window rule and recipient's WhatsApp status."
+                    }
+                
+                return response_data
+        except httpx.HTTPError as e:
+            logger.error(f"WhatsApp API error: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Error response: {e.response.text}")
+                try:
+                    error_data = e.response.json()
+                    error_message = error_data.get("error", {}).get("message", str(e))
+                    error_code = error_data.get("error", {}).get("code", "unknown")
+                    logger.error(f"Error code: {error_code}, Message: {error_message}")
+                except:
+                    pass
+            raise Exception(f"Failed to send WhatsApp message: {e}")
     
     async def send_template_message(self, to: str, template_name: str, 
                                   template_params: List[str] = None) -> Dict[str, Any]:

@@ -2,7 +2,7 @@
 WhatsApp Business API Router
 Handles WhatsApp-specific endpoints and webhooks
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Query, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, List, Any, Optional
@@ -11,6 +11,8 @@ import os
 import httpx
 import uuid
 from pathlib import Path
+import mimetypes
+import shutil
 
 from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
@@ -22,6 +24,18 @@ from app.schemas import MessageLogCreate
 logger = logging.getLogger(__name__)
 
 # Media proxy endpoint handles authentication automatically
+
+# Upload configuration
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+# File validation
+ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+ALLOWED_DOCUMENT_TYPES = ["application/pdf", "text/plain", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+ALLOWED_VIDEO_TYPES = ["video/mp4", "video/avi", "video/mov", "video/wmv"]
+ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp3"]
+
+MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB (WhatsApp limit)
 
 router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
 
@@ -68,6 +82,172 @@ async def serve_media_proxy(media_id: str):
     except Exception as e:
         logger.error(f"Error proxying media {media_id}: {e}")
         raise HTTPException(status_code=500, detail="Error loading media")
+
+@router.post("/upload")
+async def upload_media(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload media file for sending via WhatsApp
+    """
+    try:
+        # Validate file size
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+        
+        # Read file content
+        content = await file.read()
+        
+        # Validate file size after reading
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+            )
+        
+        # Validate file type
+        file_type = file.content_type or mimetypes.guess_type(file.filename)[0]
+        if not file_type:
+            raise HTTPException(status_code=400, detail="Could not determine file type")
+        
+        # Check if file type is allowed
+        allowed_types = ALLOWED_IMAGE_TYPES + ALLOWED_DOCUMENT_TYPES + ALLOWED_VIDEO_TYPES + ALLOWED_AUDIO_TYPES
+        if file_type not in allowed_types:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File type {file_type} not allowed. Allowed types: {', '.join(allowed_types)}"
+            )
+        
+        # Generate unique filename
+        file_extension = Path(file.filename).suffix if file.filename else ""
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = UPLOAD_DIR / unique_filename
+        
+        # Save file
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
+        
+        # Determine media type for WhatsApp
+        if file_type in ALLOWED_IMAGE_TYPES:
+            media_type = "image"
+        elif file_type in ALLOWED_DOCUMENT_TYPES:
+            media_type = "document"
+        elif file_type in ALLOWED_VIDEO_TYPES:
+            media_type = "video"
+        elif file_type in ALLOWED_AUDIO_TYPES:
+            media_type = "audio"
+        else:
+            media_type = "document"  # fallback
+        
+        # Generate public URL
+        public_url = f"https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/uploads/{unique_filename}"
+        
+        logger.info(f"File uploaded: {file.filename} -> {unique_filename} ({media_type})")
+        
+        return {
+            "success": True,
+            "filename": unique_filename,
+            "original_filename": file.filename,
+            "media_type": media_type,
+            "file_type": file_type,
+            "size": len(content),
+            "public_url": public_url
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading file: {e}")
+        raise HTTPException(status_code=500, detail="Error uploading file")
+
+@router.get("/uploads/{filename}")
+async def serve_uploaded_file(filename: str):
+    """
+    Serve uploaded files publicly
+    """
+    file_path = UPLOAD_DIR / filename
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Determine content type
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    if not content_type:
+        content_type = "application/octet-stream"
+    
+    return FileResponse(
+        path=str(file_path),
+        media_type=content_type,
+        filename=filename,
+        headers={
+            "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
+        }
+    )
+
+@router.post("/send-media")
+async def send_media_message(
+    phone_number: str = Query(..., description="Phone number to send to"),
+    media_url: str = Query(..., description="Public URL of the media file"),
+    media_type: str = Query(..., description="Type of media (image, document, video, audio)"),
+    caption: str = Query("", description="Optional caption for the media"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send media message via WhatsApp
+    """
+    try:
+        # Find or create contact
+        contact = await get_contact_by_phone(db, phone_number)
+        if not contact:
+            contact_data = {
+                "phone_number": phone_number,
+                "name": phone_number,
+                "owner_id": current_user.id
+            }
+            contact = await create_contact_from_webhook(db, contact_data)
+        
+        # Send media via WhatsApp
+        result = await whatsapp_service.send_media_message(
+            to=phone_number,
+            media_url=media_url,
+            media_type=media_type,
+            caption=caption
+        )
+        
+        # Log outgoing media message
+        log_data = MessageLogCreate(
+            owner_id=contact.owner_id,
+            direction="out",
+            kind="media",
+            to_from=phone_number,
+            content=caption or f"[{media_type.upper()}]",
+            cost_estimate="0.00",
+            media_url=media_url,
+            media_type=media_type,
+            media_filename=media_url.split('/')[-1]
+        )
+        await create_message_log(db, log_data)
+        
+        logger.info(f"Media message sent to {phone_number}: {media_type}")
+        
+        return {
+            "success": True,
+            "message": "Media message sent successfully",
+            "message_id": result.get("messages", [{}])[0].get("id"),
+            "media_type": media_type
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending media message: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send media message: {str(e)}"
+        )
 
 @router.post("/send-message")
 async def send_whatsapp_message(
