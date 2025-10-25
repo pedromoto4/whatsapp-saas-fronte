@@ -196,8 +196,16 @@ export default function ChatWindow({
     const filename = message.media_filename || 'arquivo'
 
     if (mediaType === 'image' && mediaUrl) {
-      // Use proxy endpoint for media (handles authentication automatically)
-      const imageUrl = `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
+      // Check if it's a WhatsApp media ID or our uploaded file URL
+      let imageUrl: string
+      
+      if (mediaUrl.startsWith('http')) {
+        // It's already a full URL (our uploaded file)
+        imageUrl = mediaUrl
+      } else {
+        // It's a WhatsApp media ID, use proxy endpoint
+        imageUrl = `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
+      }
         
       return (
         <div className="mb-2">
@@ -241,10 +249,18 @@ export default function ChatWindow({
     if (mediaType === 'video') Icon = VideoCamera
     if (mediaType === 'audio') Icon = MusicNote
 
-    // Use proxy endpoint for media (handles authentication automatically)
-    const finalMediaUrl = mediaUrl 
-      ? `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
-      : null
+    // Check if it's a WhatsApp media ID or our uploaded file URL
+    let finalMediaUrl: string | null = null
+    
+    if (mediaUrl) {
+      if (mediaUrl.startsWith('http')) {
+        // It's already a full URL (our uploaded file)
+        finalMediaUrl = mediaUrl
+      } else {
+        // It's a WhatsApp media ID, use proxy endpoint
+        finalMediaUrl = `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
+      }
+    }
 
     return (
       <div className="flex items-center gap-2 mb-2">
