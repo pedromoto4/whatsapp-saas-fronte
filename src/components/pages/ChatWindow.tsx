@@ -94,11 +94,8 @@ export default function ChatWindow({
     const filename = message.media_filename || 'arquivo'
 
     if (mediaType === 'image' && mediaUrl) {
-      // Check if it's a local path or WhatsApp URL
-      const isLocalPath = mediaUrl.startsWith('media/') || mediaUrl.includes('/media/')
-      const imageUrl = isLocalPath 
-        ? `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl.split('/').pop()}`
-        : mediaUrl
+      // Use proxy endpoint for media (handles authentication automatically)
+      const imageUrl = `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
         
       return (
         <div className="mb-2">
@@ -141,11 +138,10 @@ export default function ChatWindow({
     if (mediaType === 'video') Icon = VideoCamera
     if (mediaType === 'audio') Icon = MusicNote
 
-    // Check if it's a local path or WhatsApp URL
-    const isLocalPath = mediaUrl && (mediaUrl.startsWith('media/') || mediaUrl.includes('/media/'))
-    const finalMediaUrl = isLocalPath 
-      ? `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl.split('/').pop()}`
-      : mediaUrl
+    // Use proxy endpoint for media (handles authentication automatically)
+    const finalMediaUrl = mediaUrl 
+      ? `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
+      : null
 
     return (
       <div className="flex items-center gap-2 mb-2">
