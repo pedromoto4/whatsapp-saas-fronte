@@ -21,43 +21,7 @@ from app.schemas import MessageLogCreate
 
 logger = logging.getLogger(__name__)
 
-# Create media directory if it doesn't exist
-MEDIA_DIR = Path("media")
-MEDIA_DIR.mkdir(exist_ok=True)
-
-async def download_and_save_media(media_url: str, media_id: str, media_type: str) -> Optional[str]:
-    """
-    Download media from WhatsApp URL and save locally
-    Returns the local file path if successful, None otherwise
-    """
-    if not media_url:
-        return None
-    
-    try:
-        # Generate unique filename
-        file_extension = media_type.split('/')[-1] if '/' in media_type else 'bin'
-        filename = f"{media_id}.{file_extension}"
-        local_path = MEDIA_DIR / filename
-        
-        # Download the file with WhatsApp access token
-        headers = {}
-        if whatsapp_service.access_token:
-            headers["Authorization"] = f"Bearer {whatsapp_service.access_token}"
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(media_url, headers=headers)
-            response.raise_for_status()
-            
-            # Save to local file
-            with open(local_path, 'wb') as f:
-                f.write(response.content)
-            
-            logger.info(f"Downloaded media {media_id} to {local_path}")
-            return str(local_path)
-            
-    except Exception as e:
-        logger.error(f"Error downloading media {media_id}: {e}")
-        return None
+# Media proxy endpoint handles authentication automatically
 
 router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
 
@@ -70,19 +34,40 @@ async def get_whatsapp_status():
         "demo_mode": not whatsapp_service.is_configured()
     }
 
-@router.get("/media/{filename}")
-async def serve_media(filename: str):
-    """Serve media files from local storage"""
-    file_path = MEDIA_DIR / filename
-    
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Media file not found")
-    
-    return FileResponse(
-        path=str(file_path),
-        media_type="image/jpeg",  # Default to image, could be improved with proper MIME detection
-        filename=filename
-    )
+@router.get("/media/{media_id}")
+async def serve_media_proxy(media_id: str):
+    """
+    Proxy media from WhatsApp with proper authentication
+    Downloads and serves media directly without storing locally
+    """
+    try:
+        # Get media URL from WhatsApp
+        media_url = await whatsapp_service.get_media_url(media_id)
+        if not media_url:
+            raise HTTPException(status_code=404, detail="Media not found")
+        
+        # Download with authentication
+        headers = {}
+        if whatsapp_service.access_token:
+            headers["Authorization"] = f"Bearer {whatsapp_service.access_token}"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(media_url, headers=headers)
+            response.raise_for_status()
+            
+            # Return the media content directly
+            return Response(
+                content=response.content,
+                media_type=response.headers.get("content-type", "image/jpeg"),
+                headers={
+                    "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                    "Content-Disposition": f"inline; filename={media_id}"
+                }
+            )
+            
+    except Exception as e:
+        logger.error(f"Error proxying media {media_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error loading media")
 
 @router.post("/send-message")
 async def send_whatsapp_message(
@@ -430,27 +415,13 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         logger.error(f"Error getting media URL: {e}")
                         media_url = None
                     
-                    # Try to download and save media locally
-                    local_media_path = None
-                    if media_url:
-                        try:
-                            local_media_path = await download_and_save_media(
-                                media_url, 
-                                media_info["id"], 
-                                media_info.get("mime_type", f"{media_type}/unknown")
-                            )
-                            logger.info(f"Successfully downloaded media {media_info['id']} locally")
-                        except Exception as e:
-                            logger.warning(f"Could not download media {media_info['id']} locally: {e}")
-                            logger.info(f"Will use WhatsApp URL as fallback: {media_url}")
-                    
                     # Log incoming media message
                     try:
                         caption = media_info.get("caption", "")
                         filename = media_info.get("filename", f"{media_type}_{media_info['id']}")
                         
-                        # Use local path if available, otherwise use WhatsApp URL
-                        final_media_url = local_media_path if local_media_path else media_url
+                        # Store media_id for proxy endpoint (no need to download/store locally)
+                        final_media_url = media_info["id"]  # Store the media_id, not the URL
                         
                         log_data = MessageLogCreate(
                             owner_id=contact.owner_id,
@@ -464,7 +435,7 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             media_filename=filename
                         )
                         await create_message_log(db, log_data)
-                        logger.info(f"Logged {media_type} from {phone_number} (local: {local_media_path is not None})")
+                        logger.info(f"Logged {media_type} from {phone_number} (media_id: {media_info['id']})")
                     except Exception as e:
                         logger.error(f"Error saving media message: {e}")
             
