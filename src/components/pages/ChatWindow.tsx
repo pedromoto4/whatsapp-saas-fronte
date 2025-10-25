@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks, Image, File, VideoCamera, MusicNote, X } from '@phosphor-icons/react'
+import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks, Image, File, VideoCamera, MusicNote, X, Upload } from '@phosphor-icons/react'
 import type { Conversation, Message } from './ConversationsPage'
 
 interface ChatWindowProps {
@@ -22,6 +22,12 @@ export default function ChatWindow({
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<{
+    filename: string
+    media_type: string
+    public_url: string
+  } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevMessageCountRef = useRef(messages.length)
 
@@ -45,6 +51,94 @@ export default function ChatWindow({
     try {
       await onSendMessage(newMessage)
       setNewMessage('')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file size (16MB limit)
+    if (file.size > 16 * 1024 * 1024) {
+      alert('Ficheiro muito grande. Tamanho máximo: 16MB')
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'text/plain',
+      'video/mp4', 'video/avi', 'video/mov', 'video/wmv',
+      'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3'
+    ]
+
+    if (!allowedTypes.includes(file.type)) {
+      alert('Tipo de ficheiro não suportado')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const token = localStorage.getItem('firebase_token')
+      const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const result = await response.json()
+      setUploadedFile(result)
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      alert('Erro ao fazer upload do ficheiro')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSendMedia = async () => {
+    if (!uploadedFile || !conversation || sending) return
+
+    setSending(true)
+    try {
+      const token = localStorage.getItem('firebase_token')
+      const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/send-media', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone_number: conversation.phone,
+          media_url: uploadedFile.public_url,
+          media_type: uploadedFile.media_type,
+          caption: newMessage || ''
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send media')
+      }
+
+      setNewMessage('')
+      setUploadedFile(null)
+      
+      // Refresh messages
+      window.location.reload()
+    } catch (error) {
+      console.error('Error sending media:', error)
+      alert('Erro ao enviar media')
     } finally {
       setSending(false)
     }
@@ -273,7 +367,58 @@ export default function ChatWindow({
 
       {/* Input */}
       <div className="p-4 border-t bg-background">
+        {/* File Preview */}
+        {uploadedFile && (
+          <div className="mb-3 p-3 bg-muted rounded-lg flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              {uploadedFile.media_type === 'image' ? (
+                <Image size={24} />
+              ) : uploadedFile.media_type === 'video' ? (
+                <VideoCamera size={24} />
+              ) : uploadedFile.media_type === 'audio' ? (
+                <MusicNote size={24} />
+              ) : (
+                <File size={24} />
+              )}
+              <div>
+                <p className="text-sm font-medium">{uploadedFile.filename}</p>
+                <p className="text-xs text-muted-foreground">{uploadedFile.media_type.toUpperCase()}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setUploadedFile(null)}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2">
+          {/* File Upload Button */}
+          <div className="relative">
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              onChange={handleFileUpload}
+              accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => document.getElementById('file-upload')?.click()}
+              disabled={uploading || sending}
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              ) : (
+                <Upload size={20} />
+              )}
+            </Button>
+          </div>
+
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
@@ -283,8 +428,8 @@ export default function ChatWindow({
             className="flex-1"
           />
           <Button 
-            onClick={handleSend} 
-            disabled={!newMessage.trim() || sending}
+            onClick={uploadedFile ? handleSendMedia : handleSend} 
+            disabled={(!newMessage.trim() && !uploadedFile) || sending || uploading}
             size="icon"
           >
             <PaperPlaneRight size={20} />
