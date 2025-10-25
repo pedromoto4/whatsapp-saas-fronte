@@ -83,7 +83,10 @@ async def get_messages(
                 'created_at': msg.created_at,
                 'is_automated': is_automated,
                 'status': status,
-                'whatsapp_message_id': whatsapp_message_id
+                'whatsapp_message_id': whatsapp_message_id,
+                'media_url': getattr(msg, 'media_url', None),
+                'media_type': getattr(msg, 'media_type', None),
+                'media_filename': getattr(msg, 'media_filename', None)
             })
         
         return response
