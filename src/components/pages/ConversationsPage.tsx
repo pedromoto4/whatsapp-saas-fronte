@@ -307,6 +307,7 @@ export default function ConversationsPage() {
           conversation={conversations.find(c => c.phone_number === activeConversation)}
           messages={messages}
           onSendMessage={sendMessage}
+          onRefreshMessages={loadMessages}
           loading={messagesLoading}
         />
       </div>
