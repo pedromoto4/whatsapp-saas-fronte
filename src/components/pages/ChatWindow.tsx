@@ -10,6 +10,7 @@ interface ChatWindowProps {
   conversation?: Conversation
   messages: Message[]
   onSendMessage: (content: string) => Promise<void>
+  onRefreshMessages?: () => Promise<void>
   loading: boolean
 }
 
@@ -17,6 +18,7 @@ export default function ChatWindow({
   conversation,
   messages,
   onSendMessage,
+  onRefreshMessages,
   loading
 }: ChatWindowProps) {
   const [newMessage, setNewMessage] = useState('')
@@ -134,8 +136,13 @@ export default function ChatWindow({
       setNewMessage('')
       setUploadedFile(null)
       
-      // Refresh messages
-      window.location.reload()
+      // Refresh messages elegantly
+      if (onRefreshMessages) {
+        await onRefreshMessages()
+      } else {
+        // Fallback to page reload
+        window.location.reload()
+      }
     } catch (error) {
       console.error('Error sending media:', error)
       alert('Erro ao enviar media')
