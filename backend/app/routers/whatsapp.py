@@ -73,6 +73,8 @@ def cleanup_old_files(days_old: int = 90):
     
     return deleted_count, total_size_freed
 
+router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
+
 @router.post("/cleanup")
 async def cleanup_old_files_endpoint(
     days_old: int = Query(90, ge=1, le=365),
