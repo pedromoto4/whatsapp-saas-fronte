@@ -70,6 +70,27 @@ export default function TemplateManagement() {
       const token = await getAuthToken()
       if (!token) return
 
+      // First, sync status from WhatsApp
+      try {
+        const syncResponse = await fetch(`${API_BASE_URL}/api/templates/sync-status`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (syncResponse.ok) {
+          const syncData = await syncResponse.json()
+          if (syncData.synced > 0) {
+            toast.success(`Estado de ${syncData.synced} template(s) atualizado`)
+          }
+        }
+      } catch (error) {
+        console.log('Sync failed (continuing anyway):', error)
+      }
+
+      // Then, load templates
       const response = await fetch(`${API_BASE_URL}/api/templates/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
