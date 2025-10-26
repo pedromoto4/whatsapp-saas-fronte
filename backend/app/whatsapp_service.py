@@ -204,25 +204,29 @@ class WhatsAppService:
                     pass
             raise Exception(f"Failed to send WhatsApp message: {e}")
     
-    async def get_profile_picture(self, phone_number: str) -> Optional[str]:
+    async def get_contact_info(self, phone_number: str) -> Dict[str, Any]:
         """
-        Get profile picture URL for a contact
+        Get contact information from WhatsApp
         
         Args:
             phone_number: Phone number in international format (e.g., +5511999999999)
         
         Returns:
-            URL of the profile picture or None if not available
+            Dict with contact information (name, verified_name, etc.)
         """
         if not self.access_token or not self.phone_number_id:
-            return None
+            return {
+                "name": phone_number,
+                "verified_name": None,
+                "profile_picture_url": None
+            }
         
         # Normalize phone number
         normalized_phone = phone_number.strip().replace("+", "")
         
         url = f"{self.base_url}/{self.phone_number_id}"
         params = {
-            "fields": "profile_picture"
+            "fields": "profile"
         }
         
         headers = {
@@ -231,17 +235,35 @@ class WhatsAppService:
         
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers, params=params)
-                response.raise_for_status()
-                data = response.json()
+                # Get profile picture
+                picture_response = await client.get(
+                    f"{self.base_url}/{normalized_phone}",
+                    headers=headers,
+                    params={"fields": "profile_picture"}
+                )
                 
-                # Try to get profile picture
-                profile_data = data.get("profile_picture", {})
-                return profile_data.get("url")
+                profile_picture_url = None
+                if picture_response.status_code == 200:
+                    picture_data = picture_response.json()
+                    profile_picture_url = picture_data.get("profile_picture", {}).get("url")
+                
+                return {
+                    "phone_number": phone_number,
+                    "name": phone_number,  # WhatsApp doesn't provide name directly
+                    "verified_name": None,
+                    "profile_picture_url": profile_picture_url,
+                    "has_picture": profile_picture_url is not None
+                }
                 
         except Exception as e:
-            logger.error(f"Error getting profile picture for {phone_number}: {e}")
-            return None
+            logger.error(f"Error getting contact info for {phone_number}: {e}")
+            return {
+                "phone_number": phone_number,
+                "name": phone_number,
+                "verified_name": None,
+                "profile_picture_url": None,
+                "has_picture": False
+            }
     
     async def send_template_message(self, to: str, template_name: str, 
                                   template_params: List[str] = None) -> Dict[str, Any]:

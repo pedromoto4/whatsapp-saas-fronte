@@ -53,31 +53,40 @@ async def get_unread_count(
         logger.error(f"Error getting unread count: {e}")
         return {"unread_count": 0}
 
-@router.get("/{phone_number}/profile-picture")
-async def get_contact_profile_picture(
+@router.get("/{phone_number}/info")
+async def get_contact_info(
     phone_number: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get profile picture URL for a contact
+    Get contact information from WhatsApp
     """
     try:
-        # Get WhatsApp profile picture
+        # Get WhatsApp contact info
         from app.whatsapp_service import whatsapp_service
-        picture_url = await whatsapp_service.get_profile_picture(phone_number)
+        contact_info = await whatsapp_service.get_contact_info(phone_number)
         
-        return {
-            "phone_number": phone_number,
-            "profile_picture_url": picture_url,
-            "has_picture": picture_url is not None
-        }
+        # Also get from database if exists
+        try:
+            contact = await get_contact_by_phone(db, phone_number)
+            if contact:
+                contact_info["database_name"] = contact.name
+                contact_info["tags"] = contact.tags
+        except:
+            pass
+        
+        return contact_info
     except Exception as e:
-        logger.error(f"Error getting profile picture: {e}")
+        logger.error(f"Error getting contact info: {e}")
         return {
             "phone_number": phone_number,
+            "name": phone_number,
+            "verified_name": None,
             "profile_picture_url": None,
-            "has_picture": False
+            "has_picture": False,
+            "database_name": None,
+            "tags": None
         }
 
 @router.get("/{phone_number}/messages", response_model=List[ConversationMessageResponse])
