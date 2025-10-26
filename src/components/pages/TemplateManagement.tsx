@@ -84,7 +84,12 @@ export default function TemplateManagement() {
           const syncData = await syncResponse.json()
           if (syncData.synced > 0) {
             toast.success(`Estado de ${syncData.synced} template(s) atualizado`)
+          } else if (syncData.message) {
+            console.log('Sync result:', syncData.message)
           }
+        } else {
+          const errorData = await syncResponse.json()
+          console.error('Sync failed:', errorData)
         }
       } catch (error) {
         console.log('Sync failed (continuing anyway):', error)
