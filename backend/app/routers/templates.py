@@ -69,7 +69,7 @@ async def sync_template_status(
                     # Update status if different
                     new_status = wt.get("status", "").lower()
                     if db_template.status != new_status:
-                        await update_template(db, db_template.id, TemplateUpdate(status=new_status), current_user.id)
+                        await update_template(db, db_template.id, current_user.id, TemplateUpdate(status=new_status))
                         synced_count += 1
                         logger.info(f"Updated template {db_template.name} status to {new_status}")
         
