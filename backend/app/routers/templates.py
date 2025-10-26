@@ -81,13 +81,13 @@ async def sync_template_status(
                 
                 if name_match or id_match:
                     
-                    logger.info(f"✅ MATCHED: {template_name}")
+                    print(f"✅ MATCHED: {template_name}")
                     
                     # Update status if different
                     new_status = wt.get("status", "").lower()
                     rejection_reason = wt.get("reason", "")
                     
-                    logger.info(f"Current status: {db_template.status}, New status: {new_status}")
+                    print(f"Current status: {db_template.status}, New status: {new_status}")
                     
                     if db_template.status != new_status:
                         update_data = {"status": new_status}
@@ -96,13 +96,14 @@ async def sync_template_status(
                         if new_status == "rejected" and rejection_reason:
                             update_data["rejection_reason"] = rejection_reason
                         
+                        print(f"Updating template {db_template.name} status to {new_status}")
                         await update_template(db, db_template.id, current_user.id, TemplateUpdate(**update_data))
                         synced_count += 1
-                        logger.info(f"✅ Updated template {db_template.name} status to {new_status}")
+                        print(f"✅ Updated template {db_template.name} status to {new_status}")
                         if rejection_reason:
-                            logger.info(f"Rejection reason: {rejection_reason}")
+                            print(f"Rejection reason: {rejection_reason}")
                     else:
-                        logger.info(f"Status already up to date: {db_template.status}")
+                        print(f"Status already up to date: {db_template.status}")
                 else:
                     logger.debug(f"❌ No match for {template_name}")
         
