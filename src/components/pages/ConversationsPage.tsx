@@ -303,15 +303,18 @@ export default function ConversationsPage() {
         />
       </div>
 
-      {/* Right panel - Chat window */}
-      <div className="flex-1 flex flex-col relative">
-        <ChatWindow
-          conversation={conversations.find(c => c.phone_number === activeConversation)}
-          messages={messages}
-          onSendMessage={sendMessage}
-          onRefreshMessages={loadMessages}
-          loading={messagesLoading}
-        />
+      {/* Right panel - Chat window + Sidebar */}
+      <div className="flex flex-1 relative">
+        {/* Chat Window */}
+        <div className="flex-1 flex flex-col">
+          <ChatWindow
+            conversation={conversations.find(c => c.phone_number === activeConversation)}
+            messages={messages}
+            onSendMessage={sendMessage}
+            onRefreshMessages={loadMessages}
+            loading={messagesLoading}
+          />
+        </div>
         
         {/* Contact Info Sidebar */}
         {activeConversation && showContactInfo && (
