@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import ConversationsList from './ConversationsList'
 import ChatWindow from './ChatWindow'
+import ContactInfo from './ContactInfo'
 
 export interface Conversation {
   phone_number: string
@@ -40,6 +41,7 @@ export default function ConversationsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showOnlyUnread, setShowOnlyUnread] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [showContactInfo, setShowContactInfo] = useState(true) // Show by default
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
 
@@ -302,7 +304,7 @@ export default function ConversationsPage() {
       </div>
 
       {/* Right panel - Chat window */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
         <ChatWindow
           conversation={conversations.find(c => c.phone_number === activeConversation)}
           messages={messages}
@@ -310,6 +312,15 @@ export default function ConversationsPage() {
           onRefreshMessages={loadMessages}
           loading={messagesLoading}
         />
+        
+        {/* Contact Info Sidebar */}
+        {activeConversation && showContactInfo && (
+          <ContactInfo
+            conversation={conversations.find(c => c.phone_number === activeConversation)!}
+            messageCount={messages.length}
+            onClose={() => setShowContactInfo(false)}
+          />
+        )}
       </div>
     </div>
   )
