@@ -6,6 +6,8 @@ from firebase_admin import credentials
 import json
 import os
 from dotenv import load_dotenv
+import asyncio
+from datetime import datetime
 
 from app.database import create_tables
 from app.models import User, FAQ, Catalog, MessageLog, Template
@@ -35,6 +37,24 @@ app = FastAPI(
 from app.routers.whatsapp import cleanup_old_files
 cleanup_old_files(days_old=90)
 
+# Background task for automatic cleanup
+async def periodic_cleanup():
+    """
+    Run cleanup every 24 hours (86400 seconds)
+    """
+    while True:
+        await asyncio.sleep(86400)  # Wait 24 hours
+        print(f"[{datetime.now()}] Starting automatic cleanup...")
+        cleanup_old_files(days_old=90)
+        print(f"[{datetime.now()}] Cleanup complete!")
+
+def start_background_task():
+    """
+    Start background task for automatic cleanup
+    """
+    asyncio.create_task(periodic_cleanup())
+    print("[STARTUP] Background cleanup task started (runs every 24 hours)")
+
 # CORS Configuration - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
@@ -63,6 +83,16 @@ async def startup_event():
         await create_tables()
     except Exception:
         pass  # Continue even if DB setup fails
+
+@app.on_event("startup")
+async def startup_event():
+    """Startup event - initialize background tasks"""
+    start_background_task()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shutdown event"""
+    print("[SHUTDOWN] Background cleanup task stopped")
 
 @app.get("/")
 async def root():
