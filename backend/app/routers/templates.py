@@ -57,9 +57,15 @@ async def sync_template_status(
         
         synced_count = 0
         for wt in whatsapp_templates:
-            # Find matching template in database by name
+            # Find matching template in database by name or whatsapp_template_id
             for db_template in db_templates:
-                if db_template.name == wt.get("name") or db_template.whatsapp_template_name == wt.get("name"):
+                template_name = wt.get("name", "")
+                template_id = wt.get("id", "")
+                
+                # Match by name or WhatsApp template ID
+                if (db_template.name == template_name or 
+                    db_template.whatsapp_template_id == template_id):
+                    
                     # Update status if different
                     new_status = wt.get("status", "").lower()
                     if db_template.status != new_status:
