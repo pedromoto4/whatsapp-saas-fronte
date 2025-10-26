@@ -41,6 +41,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
         
         if (response.ok) {
           const data = await response.json()
+          console.log('📸 Contact Info loaded:', data) // Debug log
           setContactData(data)
           
           // Use WhatsApp name or database name if available
@@ -63,6 +64,8 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
   const displayName = name || conversation.contact_name || contactData?.database_name || conversation.phone_number
   const displayPhone = conversation.phone_number
   const profilePictureUrl = contactData?.profile_picture_url
+  
+  console.log('🖼️ Profile picture URL:', profilePictureUrl) // Debug log
 
   const handleSave = () => {
     // TODO: Implement API call to save notes and name
