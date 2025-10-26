@@ -80,6 +80,12 @@ async def sync_template_status(
         
     except Exception as e:
         logger.error(f"Error syncing template status: {e}")
+        # Don't raise error if it's just an auth issue - templates will still load from database
+        if "401" in str(e) or "Unauthorized" in str(e):
+            return {
+                "message": "Could not sync with WhatsApp API (token may be expired)",
+                "synced": 0
+            }
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to sync template status: {str(e)}"
