@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Conversation } from './ConversationsPage'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ContactInfoProps {
   conversation: Conversation
@@ -12,10 +12,57 @@ interface ContactInfoProps {
   onClose: () => void
 }
 
+interface ContactData {
+  phone_number: string
+  name?: string
+  verified_name?: string
+  profile_picture_url?: string
+  has_picture?: boolean
+  database_name?: string
+  tags?: string
+}
+
 export default function ContactInfo({ conversation, messageCount, onClose }: ContactInfoProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [notes, setNotes] = useState('')
   const [name, setName] = useState(conversation.contact_name || '')
+  const [contactData, setContactData] = useState<ContactData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadContactInfo = async () => {
+      try {
+        const token = localStorage.getItem('firebase_token')
+        const response = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/info`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setContactData(data)
+          
+          // Use WhatsApp name or database name if available
+          if (data.database_name) {
+            setName(data.database_name)
+          } else if (data.name && data.name !== conversation.phone_number) {
+            setName(data.name)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading contact info:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadContactInfo()
+  }, [conversation.phone_number])
+
+  const displayName = name || conversation.contact_name || contactData?.database_name || conversation.phone_number
+  const displayPhone = conversation.phone_number
+  const profilePictureUrl = contactData?.profile_picture_url
 
   const handleSave = () => {
     // TODO: Implement API call to save notes and name
@@ -38,9 +85,13 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
         {/* Profile Section */}
         <div className="flex flex-col items-center mb-6">
           <Avatar className="w-20 h-20 mb-4">
-            <AvatarFallback className="text-2xl">
-              {(conversation.contact_name || conversation.phone_number).charAt(0).toUpperCase()}
-            </AvatarFallback>
+            {profilePictureUrl ? (
+              <img src={profilePictureUrl} alt={displayName} />
+            ) : (
+              <AvatarFallback className="text-2xl">
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            )}
           </Avatar>
           
           <div className="text-center">
@@ -52,10 +103,10 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
               />
             ) : (
               <h3 className="text-lg font-semibold mb-1">
-                {conversation.contact_name || conversation.phone_number}
+                {displayName}
               </h3>
             )}
-            <p className="text-sm text-muted-foreground">{conversation.phone_number}</p>
+            <p className="text-sm text-muted-foreground">{displayPhone}</p>
           </div>
         </div>
 
