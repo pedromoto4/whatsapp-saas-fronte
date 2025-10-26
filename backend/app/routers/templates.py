@@ -37,6 +37,48 @@ async def create_template_endpoint(
     """Create a new template"""
     return await create_template(db, template_data, current_user.id)
 
+@router.post("/sync-status")
+async def sync_template_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Sync template status from WhatsApp API to database
+    """
+    try:
+        # Get templates from WhatsApp
+        whatsapp_templates = await whatsapp_service.get_message_templates()
+        
+        if not whatsapp_templates:
+            return {"message": "No templates found in WhatsApp", "synced": 0}
+        
+        # Get all templates from database
+        db_templates = await get_templates(db, current_user.id)
+        
+        synced_count = 0
+        for wt in whatsapp_templates:
+            # Find matching template in database by name
+            for db_template in db_templates:
+                if db_template.name == wt.get("name") or db_template.whatsapp_template_name == wt.get("name"):
+                    # Update status if different
+                    new_status = wt.get("status", "").lower()
+                    if db_template.status != new_status:
+                        await update_template(db, db_template.id, TemplateUpdate(status=new_status), current_user.id)
+                        synced_count += 1
+                        logger.info(f"Updated template {db_template.name} status to {new_status}")
+        
+        return {
+            "message": f"Synced {synced_count} template(s)",
+            "synced": synced_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error syncing template status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync template status: {str(e)}"
+        )
+
 @router.get("/", response_model=List[TemplateResponse])
 async def get_templates_endpoint(
     current_user: User = Depends(get_current_user),
