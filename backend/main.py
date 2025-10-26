@@ -31,6 +31,10 @@ app = FastAPI(
     version="1.0.1"  # Force rebuild without HTTPS redirect middleware
 )
 
+# Cleanup old files on startup (files older than 90 days)
+from app.routers.whatsapp import cleanup_old_files
+cleanup_old_files(days_old=90)
+
 # CORS Configuration - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,

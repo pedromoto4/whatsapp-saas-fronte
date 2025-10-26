@@ -13,6 +13,7 @@ import uuid
 from pathlib import Path
 import mimetypes
 import shutil
+from datetime import datetime, timedelta
 
 from app.dependencies import get_current_user, get_db
 from app.models import User, Contact, Message
@@ -37,7 +38,58 @@ ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp3"]
 
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB (WhatsApp limit)
 
-router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
+def cleanup_old_files(days_old: int = 90):
+    """
+    Remove files older than specified days from /uploads directory
+    Returns (deleted_count, total_size_freed)
+    """
+    if not UPLOAD_DIR.exists():
+        return 0, 0
+    
+    cutoff_date = datetime.now() - timedelta(days=days_old)
+    deleted_count = 0
+    total_size_freed = 0
+    
+    try:
+        for file_path in UPLOAD_DIR.iterdir():
+            if file_path.is_file():
+                # Check file modification time
+                file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                
+                if file_mtime < cutoff_date:
+                    file_size = file_path.stat().st_size
+                    file_path.unlink()
+                    deleted_count += 1
+                    total_size_freed += file_size
+                    logger.info(f"Deleted old file: {file_path.name} ({file_size} bytes)")
+        
+        if deleted_count > 0:
+            logger.info(f"Cleanup complete: {deleted_count} files deleted, {total_size_freed / 1024 / 1024:.2f} MB freed")
+        else:
+            logger.info("No old files to cleanup")
+            
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
+    
+    return deleted_count, total_size_freed
+
+@router.post("/cleanup")
+async def cleanup_old_files_endpoint(
+    days_old: int = Query(90, ge=1, le=365),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Manually trigger cleanup of old uploaded files
+    Only accessible to authenticated users
+    """
+    deleted_count, total_size_freed = cleanup_old_files(days_old=days_old)
+    
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "total_size_freed_mb": round(total_size_freed / 1024 / 1024, 2),
+        "message": f"Cleanup complete: {deleted_count} files deleted, {round(total_size_freed / 1024 / 1024, 2)} MB freed"
+    }
 
 @router.get("/status")
 async def get_whatsapp_status():
