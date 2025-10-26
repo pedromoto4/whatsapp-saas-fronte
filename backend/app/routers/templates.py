@@ -49,11 +49,14 @@ async def sync_template_status(
         # Get templates from WhatsApp
         whatsapp_templates = await whatsapp_service.get_message_templates()
         
+        logger.info(f"WhatsApp returned {len(whatsapp_templates) if whatsapp_templates else 0)} templates")
+        
         if not whatsapp_templates:
             return {"message": "No templates found in WhatsApp", "synced": 0}
         
         # Get all templates from database
         db_templates = await get_templates(db, current_user.id)
+        logger.info(f"Database has {len(db_templates)} templates")
         
         synced_count = 0
         for wt in whatsapp_templates:
