@@ -352,14 +352,21 @@ class WhatsAppService:
             "Authorization": f"Bearer {self.access_token}"
         }
         
+        # Add query parameters to avoid 400 Bad Request
+        params = {
+            "limit": 100  # Get up to 100 templates
+        }
+        
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=headers, params=params)
                 response.raise_for_status()
                 data = response.json()
                 return data.get("data", [])
         except httpx.HTTPError as e:
             logger.error(f"WhatsApp templates API error: {e}")
+            if hasattr(e, 'response') and e.response:
+                logger.error(f"Error response: {e.response.text}")
             return []
     
     def verify_webhook(self, mode: str, token: str, challenge: str) -> Optional[str]:
