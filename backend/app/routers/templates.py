@@ -46,11 +46,13 @@ async def sync_template_status(
     Sync template status from WhatsApp API to database
     """
     try:
-        logger.info("Starting template sync...")
+        print("🔍 Starting template sync...")
+        logger.error("Starting template sync...")  # Use error to guarantee visibility
         # Get templates from WhatsApp
         whatsapp_templates = await whatsapp_service.get_message_templates()
         
-        logger.info(f"WhatsApp returned {len(whatsapp_templates)} templates")
+        print(f"📊 WhatsApp returned {len(whatsapp_templates)} templates")
+        logger.error(f"WhatsApp returned {len(whatsapp_templates)} templates")
         
         if not whatsapp_templates or len(whatsapp_templates) == 0:
             logger.warning("No templates returned from WhatsApp API")
@@ -58,17 +60,18 @@ async def sync_template_status(
         
         # Get all templates from database
         db_templates = await get_templates(db, current_user.id)
-        logger.info(f"Database has {len(db_templates)} templates")
+        print(f"📊 Database has {len(db_templates)} templates")
+        logger.error(f"Database has {len(db_templates)} templates")
         
         synced_count = 0
         for wt in whatsapp_templates:
-            logger.info(f"Processing template from WhatsApp: {wt}")
+            print(f"Processing template from WhatsApp: {wt}")
             # Find matching template in database by name or whatsapp_template_id
             for db_template in db_templates:
                 template_name = wt.get("name", "")
                 template_id = wt.get("id", "")
                 
-                logger.info(f"Comparing WhatsApp template '{template_name}' (ID: {template_id}) with database template '{db_template.name}' (WhatsApp ID: {db_template.whatsapp_template_id})")
+                print(f"Comparing WhatsApp template '{template_name}' (ID: {template_id}) with database template '{db_template.name}' (WhatsApp ID: {db_template.whatsapp_template_id})")
                 
                 # Match by name or WhatsApp template ID
                 if (db_template.name == template_name or 
