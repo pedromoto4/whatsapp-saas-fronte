@@ -1,4 +1,4 @@
-import { X, PencilSimple, FloppyDisk, User as UserIcon, Phone, Clock, FileText } from '@phosphor-icons/react'
+import { X, PencilSimple, FloppyDisk, Phone, Clock, FileText } from '@phosphor-icons/react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
