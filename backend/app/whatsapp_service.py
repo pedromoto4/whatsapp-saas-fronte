@@ -346,15 +346,22 @@ class WhatsAppService:
                 }
             ]
         
-        url = f"{self.base_url}/{self.phone_number_id}/message_templates"
+        # Need to use the business account ID, not phone number ID
+        business_account_id = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
+        
+        if not business_account_id:
+            logger.error("WHATSAPP_BUSINESS_ACCOUNT_ID not configured")
+            return []
+        
+        url = f"{self.base_url}/{business_account_id}/message_templates"
         
         headers = {
             "Authorization": f"Bearer {self.access_token}"
         }
         
-        # Add query parameters to avoid 400 Bad Request
+        # Add query parameters
         params = {
-            "limit": 100  # Get up to 100 templates
+            "limit": 100
         }
         
         try:
