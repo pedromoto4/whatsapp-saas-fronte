@@ -70,17 +70,16 @@ async def sync_template_status(
                 if name_match or id_match:
                     # Update status if different
                     new_status = wt.get("status", "").lower()
-                    rejection_reason = wt.get("reason", "")
-                    
-                    # Debug: print all WhatsApp template data
-                    print(f"📋 WhatsApp Template Data: {wt}")
                     
                     if db_template.status != new_status:
                         update_data = {"status": new_status}
                         
-                        # If rejected, also update rejection reason
-                        if new_status == "rejected" and rejection_reason:
-                            update_data["rejection_reason"] = rejection_reason
+                        # If rejected, save a generic rejection reason
+                        if new_status == "rejected":
+                            # WhatsApp doesn't provide detailed rejection reasons
+                            # So we can use the category to infer the reason
+                            category = wt.get("category", "UNKNOWN")
+                            update_data["rejection_reason"] = f"Rejeitado pela categoria {category}. Verifique as políticas do WhatsApp Business"
                         
                         await update_template(db, db_template.id, current_user.id, TemplateUpdate(**update_data))
                         synced_count += 1
