@@ -74,8 +74,12 @@ async def sync_template_status(
                 print(f"Comparing WhatsApp template '{template_name}' (ID: {template_id}) with database template '{db_template.name}' (WhatsApp ID: {db_template.whatsapp_template_id})")
                 
                 # Match by name or WhatsApp template ID
-                if (db_template.name == template_name or 
-                    db_template.whatsapp_template_id == template_id):
+                name_match = db_template.name.lower() == template_name.lower()
+                id_match = db_template.whatsapp_template_id == template_id
+                
+                print(f"  -> Name match: {name_match}, ID match: {id_match}")
+                
+                if name_match or id_match:
                     
                     logger.info(f"✅ MATCHED: {template_name}")
                     
