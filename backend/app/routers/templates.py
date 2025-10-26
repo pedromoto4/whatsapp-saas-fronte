@@ -49,7 +49,7 @@ async def sync_template_status(
         # Get templates from WhatsApp
         whatsapp_templates = await whatsapp_service.get_message_templates()
         
-        logger.info(f"WhatsApp returned {len(whatsapp_templates) if whatsapp_templates else 0)} templates")
+        logger.info(f"WhatsApp returned {len(whatsapp_templates)} templates")
         
         if not whatsapp_templates:
             return {"message": "No templates found in WhatsApp", "synced": 0}
