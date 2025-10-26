@@ -51,7 +51,8 @@ async def sync_template_status(
         
         logger.info(f"WhatsApp returned {len(whatsapp_templates)} templates")
         
-        if not whatsapp_templates:
+        if not whatsapp_templates or len(whatsapp_templates) == 0:
+            logger.warning("No templates returned from WhatsApp API")
             return {"message": "No templates found in WhatsApp", "synced": 0}
         
         # Get all templates from database
