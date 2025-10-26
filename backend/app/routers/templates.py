@@ -68,13 +68,19 @@ async def sync_template_status(
                 template_name = wt.get("name", "")
                 template_id = wt.get("id", "")
                 
+                logger.info(f"Comparing WhatsApp template '{template_name}' (ID: {template_id}) with database template '{db_template.name}' (WhatsApp ID: {db_template.whatsapp_template_id})")
+                
                 # Match by name or WhatsApp template ID
                 if (db_template.name == template_name or 
                     db_template.whatsapp_template_id == template_id):
                     
+                    logger.info(f"✅ MATCHED: {template_name}")
+                    
                     # Update status if different
                     new_status = wt.get("status", "").lower()
                     rejection_reason = wt.get("reason", "")
+                    
+                    logger.info(f"Current status: {db_template.status}, New status: {new_status}")
                     
                     if db_template.status != new_status:
                         update_data = {"status": new_status}
@@ -85,9 +91,13 @@ async def sync_template_status(
                         
                         await update_template(db, db_template.id, current_user.id, TemplateUpdate(**update_data))
                         synced_count += 1
-                        logger.info(f"Updated template {db_template.name} status to {new_status}")
+                        logger.info(f"✅ Updated template {db_template.name} status to {new_status}")
                         if rejection_reason:
                             logger.info(f"Rejection reason: {rejection_reason}")
+                    else:
+                        logger.info(f"Status already up to date: {db_template.status}")
+                else:
+                    logger.debug(f"❌ No match for {template_name}")
         
         return {
             "message": f"Synced {synced_count} template(s)",
