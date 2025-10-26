@@ -46,6 +46,7 @@ async def sync_template_status(
     Sync template status from WhatsApp API to database
     """
     try:
+        logger.info("Starting template sync...")
         # Get templates from WhatsApp
         whatsapp_templates = await whatsapp_service.get_message_templates()
         
