@@ -1,5 +1,5 @@
 import { X, PencilSimple, FloppyDisk, Phone, Clock, FileText } from '@phosphor-icons/react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -86,7 +86,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
         <div className="flex flex-col items-center mb-6">
           <Avatar className="w-20 h-20 mb-4">
             {profilePictureUrl ? (
-              <img src={profilePictureUrl} alt={displayName} />
+              <AvatarImage src={profilePictureUrl} alt={displayName} />
             ) : (
               <AvatarFallback className="text-2xl">
                 {displayName.charAt(0).toUpperCase()}
