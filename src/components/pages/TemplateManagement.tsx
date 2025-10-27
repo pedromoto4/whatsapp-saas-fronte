@@ -376,7 +376,6 @@ export default function TemplateManagement() {
                     <SelectContent>
                       <SelectItem value="UTILITY">Utilidade</SelectItem>
                       <SelectItem value="MARKETING">Marketing</SelectItem>
-                      <SelectItem value="AUTHENTICATION">Autenticação</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -294,15 +294,12 @@ async def submit_template_for_approval(
         components = []
         
         # Add HEADER component if exists
-        # Note: HEADER is not supported for AUTHENTICATION category templates
-        if template.header_text and template.category != "AUTHENTICATION":
+        if template.header_text:
             components.append({
                 "type": "HEADER",
                 "format": "TEXT",
                 "text": template.header_text
             })
-        elif template.header_text and template.category == "AUTHENTICATION":
-            logger.warning(f"HEADER component not supported for AUTHENTICATION category. Skipping header text: {template.header_text}")
         
         # Add BODY component (required)
         # For AUTHENTICATION templates, use "example" instead of "text"
@@ -318,40 +315,22 @@ async def submit_template_for_approval(
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse variables: {template.variables}")
         
-        # For AUTHENTICATION templates, the BODY component uses "text" (same as others)
-        # But we need to add "example" for any variables
+        # Add BODY component
         body_component = {
             "type": "BODY",
             "text": body_text
         }
         
-        # If AUTHENTICATION template has variables, add example array
-        if template.category == "AUTHENTICATION" and template.variables:
-            try:
-                variables = json.loads(template.variables)
-                examples = []
-                for i in range(len(variables)):
-                    examples.append([f"value{i+1}"])
-                body_component["example"] = {
-                    "body_text": examples
-                }
-            except:
-                pass
-        
         components.append(body_component)
         
         # Add FOOTER component if exists
-        # Note: FOOTER is not supported for AUTHENTICATION category templates
-        if template.footer_text and template.category != "AUTHENTICATION":
+        if template.footer_text:
             components.append({
                 "type": "FOOTER",
                 "text": template.footer_text
             })
-        elif template.footer_text and template.category == "AUTHENTICATION":
-            logger.warning(f"FOOTER component not supported for AUTHENTICATION category. Skipping footer text: {template.footer_text}")
         
         # Add BUTTONS component if exists
-        # Note: AUTHENTICATION templates only support authentication buttons
         if template.buttons:
             try:
                 buttons = json.loads(template.buttons)
