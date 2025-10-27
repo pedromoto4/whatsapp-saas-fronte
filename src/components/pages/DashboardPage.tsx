@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import FAQManagement from '@/components/pages/FAQManagement'
 import CatalogManagement from '@/components/pages/CatalogManagement'
-import MessageLogsPage from '@/components/pages/MessageLogsPage'
 import ContactsManagement from '@/components/pages/ContactsManagement'
 import TemplateManagement from '@/components/pages/TemplateManagement'
 import ConversationsPage from '@/components/pages/ConversationsPage'
@@ -23,12 +22,11 @@ import {
   Bug,
   Check,
   X,
-  ClockCounterClockwise,
   FileText,
   ChatCircleText
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'faqs' | 'logs' | 'contacts' | 'templates' | 'conversations'
+type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'templates' | 'conversations'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -111,10 +109,7 @@ export default function DashboardPage() {
     { id: 'contacts' as const, label: 'Contatos', icon: Users },
     { id: 'templates' as const, label: 'Templates', icon: FileText },
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
-    { id: 'automation' as const, label: 'Automação', icon: Circle },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
-    { id: 'logs' as const, label: 'Histórico', icon: ClockCounterClockwise },
-    { id: 'analytics' as const, label: 'Relatórios', icon: TrendUp },
     { id: 'api-test' as const, label: 'Teste API', icon: Bug },
   ]
 
@@ -359,14 +354,6 @@ export default function DashboardPage() {
                   <Button 
                     variant="outline" 
                     className="w-full justify-start"
-                    onClick={() => setActiveSection('automation')}
-                  >
-                    <Circle className="mr-2 h-4 w-4" />
-                    Set up automation
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
                     onClick={() => setActiveSection('catalog')}
                   >
                     <ShoppingCart className="mr-2 h-4 w-4" />
@@ -391,9 +378,6 @@ export default function DashboardPage() {
       
       case 'catalog':
         return <CatalogManagement />
-      
-      case 'logs':
-        return <MessageLogsPage />
       
       case 'contacts':
         return <ContactsManagement />
@@ -707,29 +691,6 @@ export default function DashboardPage() {
           </div>
         )
       
-      case 'automation':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Smart Automation</h2>
-              <p className="text-muted-foreground">
-                Set up automated responses and workflows for your customers.
-              </p>
-            </div>
-            <Card>
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <Circle size={48} className="text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Automation Coming Soon</h3>
-                  <p className="text-muted-foreground">
-                    We're building powerful automation tools for you.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )
-      
       case 'catalog':
         return (
           <div className="space-y-6">
@@ -746,29 +707,6 @@ export default function DashboardPage() {
                   <h3 className="text-lg font-semibold mb-2">Catalog Management Coming Soon</h3>
                   <p className="text-muted-foreground">
                     Advanced product management tools are in development.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )
-      
-      case 'analytics':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Analytics & Reports</h2>
-              <p className="text-muted-foreground">
-                Track your performance with detailed insights.
-              </p>
-            </div>
-            <Card>
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <TrendUp size={48} className="text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Advanced Analytics Coming Soon</h3>
-                  <p className="text-muted-foreground">
-                    Comprehensive reporting and analytics dashboard in development.
                   </p>
                 </div>
               </CardContent>
@@ -800,27 +738,34 @@ export default function DashboardPage() {
         <aside className="w-64 border-r border-border bg-card min-h-screen">
           <nav className="p-4">
             <ul className="space-y-2">
-              {sidebarItems.map((item) => (
-                <li key={item.id}>
-                  <button
-                    onClick={() => setActiveSection(item.id)}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                      activeSection === item.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon size={20} />
-                      {item.label}
-                    </div>
-                    {item.id === 'conversations' && unreadCount > 0 && (
-                      <Badge className="bg-red-500 text-white">
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </button>
-                </li>
+              {sidebarItems.map((item, index) => (
+                <>
+                  {item.id === 'api-test' && (
+                    <li key="separator" className="my-4">
+                      <div className="h-px bg-border" />
+                    </li>
+                  )}
+                  <li key={item.id}>
+                    <button
+                      onClick={() => setActiveSection(item.id)}
+                      className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        activeSection === item.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon size={20} />
+                        {item.label}
+                      </div>
+                      {item.id === 'conversations' && unreadCount > 0 && (
+                        <Badge className="bg-red-500 text-white">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                    </button>
+                  </li>
+                </>
               ))}
             </ul>
           </nav>
