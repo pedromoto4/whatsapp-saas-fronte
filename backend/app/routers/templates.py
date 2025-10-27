@@ -320,22 +320,6 @@ async def submit_template_for_approval(
             "text": body_text
         }
         
-        # Add example if there are variables
-        if template.variables:
-            try:
-                variables = json.loads(template.variables)
-                if variables:
-                    # Add example data for each variable
-                    examples = []
-                    for i in range(len(variables)):
-                        # Generate example values based on variable type
-                        examples.append([f"value{i+1}"])
-                    body_component["example"] = {
-                        "body_text": examples
-                    }
-            except:
-                pass
-        
         components.append(body_component)
         
         # Add FOOTER component if exists
