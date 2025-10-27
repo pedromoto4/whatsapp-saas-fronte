@@ -549,8 +549,7 @@ class WhatsAppService:
         }
         
         logger.info(f"Submitting template '{name}' for approval to WhatsApp")
-        print(f"📤 PAYLOAD TO WHATSAPP: {json.dumps(payload, indent=2)}")
-        logger.info(f"Template payload: {json.dumps(payload, indent=2)}")
+        logger.debug(f"Template payload: {json.dumps(payload, indent=2)}")
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -562,7 +561,7 @@ class WhatsAppService:
                 response.raise_for_status()
                 response_data = response.json()
                 
-                print(f"✅ WHATSAPP RESPONSE: {json.dumps(response_data, indent=2)}")
+                logger.debug(f"WhatsApp API Response: {json.dumps(response_data, indent=2)}")
                 
                 return {
                     "status": "success",

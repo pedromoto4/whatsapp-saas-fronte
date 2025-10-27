@@ -155,7 +155,10 @@ export default function TemplateManagement() {
   }
 
   const deleteTemplate = async (id: number) => {
-    if (!confirm('Tem certeza que deseja deletar este template?')) return
+    const template = templates.find(t => t.id === id)
+    if (!template) return
+
+    if (!confirm(`Tem certeza que deseja deletar o template "${template.name}"?\n\nEsta ação não pode ser desfeita.`)) return
 
     try {
       const token = await getAuthToken()
@@ -170,10 +173,11 @@ export default function TemplateManagement() {
       })
 
       if (response.ok) {
-        toast.success('Template deletado!')
+        toast.success('Template deletado com sucesso!')
         loadTemplates()
       } else {
-        toast.error('Erro ao deletar template')
+        const error = await response.json()
+        toast.error(error.detail || 'Erro ao deletar template')
       }
     } catch (error) {
       toast.error('Erro de conexão')
@@ -227,15 +231,11 @@ export default function TemplateManagement() {
   }
 
   const submitTemplateForApproval = async (template: Template) => {
-    console.log(`📤 Submitting template: ${template.name}, category: ${template.category}, status: ${template.status}`)
-    
     if (!confirm(`Submeter template "${template.name}" para aprovação do WhatsApp?\n\nO template será revisado em 24-48 horas.`)) return
 
     try {
       const token = await getAuthToken()
       if (!token) return
-
-      console.log(`🚀 Calling API: POST /api/templates/${template.id}/submit`)
 
       const response = await fetch(`${API_BASE_URL}/api/templates/${template.id}/submit`, {
         method: 'POST',
