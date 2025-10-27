@@ -549,7 +549,8 @@ class WhatsAppService:
         }
         
         logger.info(f"Submitting template '{name}' for approval to WhatsApp")
-        logger.debug(f"Template payload: {json.dumps(payload, indent=2)}")
+        print(f"📤 PAYLOAD TO WHATSAPP: {json.dumps(payload, indent=2)}")
+        logger.info(f"Template payload: {json.dumps(payload, indent=2)}")
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
