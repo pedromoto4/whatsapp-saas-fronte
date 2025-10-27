@@ -343,7 +343,7 @@ async def submit_template_for_approval(
                 logger.warning(f"Failed to parse buttons: {template.buttons}")
         
         # Submit to WhatsApp
-        logger.info(f"Calling whatsapp_service.submit_template_for_approval with name={template_name}")
+        logger.info(f"Calling whatsapp_service.submit_template_for_approval with name={template_name}, category={template.category}, language={template.language}")
         result = await whatsapp_service.submit_template_for_approval(
             name=template_name,  # Use modified name if rejected
             category=template.category,
