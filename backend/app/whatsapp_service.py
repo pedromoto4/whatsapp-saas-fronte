@@ -562,6 +562,8 @@ class WhatsAppService:
                 response.raise_for_status()
                 response_data = response.json()
                 
+                print(f"✅ WHATSAPP RESPONSE: {json.dumps(response_data, indent=2)}")
+                
                 return {
                     "status": "success",
                     "template_id": response_data.get("id"),
