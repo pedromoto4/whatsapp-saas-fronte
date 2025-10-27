@@ -325,9 +325,13 @@ async def submit_template_for_approval(
             try:
                 variables = json.loads(template.variables)
                 if variables:
-                    # For UTILITY category, add example showing how to use variables
+                    # Add example data for each variable
+                    examples = []
+                    for i in range(len(variables)):
+                        # Generate example values based on variable type
+                        examples.append([f"value{i+1}"])
                     body_component["example"] = {
-                        "body_text": []
+                        "body_text": examples
                     }
             except:
                 pass
