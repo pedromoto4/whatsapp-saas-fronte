@@ -265,10 +265,13 @@ async def submit_template_for_approval(
 ):
     """Submit a template to WhatsApp for approval"""
     try:
+        logger.info(f"Submitting template {template_id} for approval")
         # Get template
         template = await get_template(db, template_id, current_user.id)
         if not template:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        
+        logger.info(f"Template found: {template.name}, status: {template.status}")
         
         # Check if already submitted
         # Allow draft or rejected templates to be submitted
@@ -291,12 +294,15 @@ async def submit_template_for_approval(
         components = []
         
         # Add HEADER component if exists
-        if template.header_text:
+        # Note: HEADER is not supported for AUTHENTICATION category templates
+        if template.header_text and template.category != "AUTHENTICATION":
             components.append({
                 "type": "HEADER",
                 "format": "TEXT",
                 "text": template.header_text
             })
+        elif template.header_text and template.category == "AUTHENTICATION":
+            logger.warning(f"HEADER component not supported for AUTHENTICATION category. Skipping header text: {template.header_text}")
         
         # Add BODY component (required)
         body_text = template.body_text
@@ -317,13 +323,17 @@ async def submit_template_for_approval(
         })
         
         # Add FOOTER component if exists
-        if template.footer_text:
+        # Note: FOOTER is not supported for AUTHENTICATION category templates
+        if template.footer_text and template.category != "AUTHENTICATION":
             components.append({
                 "type": "FOOTER",
                 "text": template.footer_text
             })
+        elif template.footer_text and template.category == "AUTHENTICATION":
+            logger.warning(f"FOOTER component not supported for AUTHENTICATION category. Skipping footer text: {template.footer_text}")
         
         # Add BUTTONS component if exists
+        # Note: AUTHENTICATION templates only support authentication buttons
         if template.buttons:
             try:
                 buttons = json.loads(template.buttons)
@@ -336,12 +346,15 @@ async def submit_template_for_approval(
                 logger.warning(f"Failed to parse buttons: {template.buttons}")
         
         # Submit to WhatsApp
+        logger.info(f"Calling whatsapp_service.submit_template_for_approval with name={template_name}")
         result = await whatsapp_service.submit_template_for_approval(
             name=template_name,  # Use modified name if rejected
             category=template.category,
             language=template.language,
             components=components
         )
+        
+        logger.info(f"Template submitted successfully. Result: {result}")
         
         # Update template status to pending
         # If resubmitting a rejected template, clear the rejection reason
@@ -351,7 +364,10 @@ async def submit_template_for_approval(
             whatsapp_template_id=result.get("template_id"),
             rejection_reason=None  # Clear rejection reason when resubmitting
         )
+        
+        logger.info(f"Updating template status to pending in database")
         await update_template(db, template_id, current_user.id, template_update)
+        logger.info(f"Template status updated successfully")
         
         return {
             "status": "success",
