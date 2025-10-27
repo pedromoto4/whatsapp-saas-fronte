@@ -227,11 +227,15 @@ export default function TemplateManagement() {
   }
 
   const submitTemplateForApproval = async (template: Template) => {
+    console.log(`📤 Submitting template: ${template.name}, category: ${template.category}, status: ${template.status}`)
+    
     if (!confirm(`Submeter template "${template.name}" para aprovação do WhatsApp?\n\nO template será revisado em 24-48 horas.`)) return
 
     try {
       const token = await getAuthToken()
       if (!token) return
+
+      console.log(`🚀 Calling API: POST /api/templates/${template.id}/submit`)
 
       const response = await fetch(`${API_BASE_URL}/api/templates/${template.id}/submit`, {
         method: 'POST',

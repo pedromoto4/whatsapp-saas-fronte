@@ -271,7 +271,8 @@ async def submit_template_for_approval(
         if not template:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
         
-        logger.info(f"Template found: {template.name}, status: {template.status}")
+        logger.info(f"Template found: {template.name}, status: {template.status}, category: {template.category}")
+        print(f"🔍 Template from DB: name={template.name}, status={template.status}, category={template.category}, language={template.language}")
         
         # Check if already submitted
         # Allow draft or rejected templates to be submitted
