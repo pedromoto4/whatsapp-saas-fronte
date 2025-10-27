@@ -320,6 +320,18 @@ async def submit_template_for_approval(
             "text": body_text
         }
         
+        # Add example if there are variables
+        if template.variables:
+            try:
+                variables = json.loads(template.variables)
+                if variables:
+                    # For UTILITY category, add example showing how to use variables
+                    body_component["example"] = {
+                        "body_text": []
+                    }
+            except:
+                pass
+        
         components.append(body_component)
         
         # Add FOOTER component if exists
