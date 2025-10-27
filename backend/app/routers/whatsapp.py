@@ -93,14 +93,6 @@ async def cleanup_old_files_endpoint(
         "message": f"Cleanup complete: {deleted_count} files deleted, {round(total_size_freed / 1024 / 1024, 2)} MB freed"
     }
 
-@router.get("/status")
-async def get_whatsapp_status():
-    """Check WhatsApp service configuration status"""
-    return {
-        "configured": whatsapp_service.is_configured(),
-        "service": "WhatsApp Business API",
-        "demo_mode": not whatsapp_service.is_configured()
-    }
 
 @router.get("/media/{media_id}")
 async def serve_media_proxy(media_id: str):
@@ -390,106 +382,6 @@ async def send_whatsapp_message(
             detail=f"Failed to send message: {str(e)}"
         )
 
-@router.post("/send-template")
-async def send_template_message(
-    to: str,
-    template_name: str,
-    template_params: Optional[List[str]] = None,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Send a template message via WhatsApp Business API"""
-    try:
-        # Find or create contact
-        contact = await get_contact_by_phone(db, to)
-        if not contact:
-            contact_data = {
-                "phone_number": to,
-                "name": to,
-                "owner_id": current_user.id
-            }
-            contact = await create_contact_from_webhook(db, contact_data)
-        
-        # Send template via WhatsApp API
-        response = await whatsapp_service.send_template_message(
-            to=to,
-            template_name=template_name,
-            template_params=template_params or []
-        )
-        
-        # Save message to database
-        message_content = f"Template: {template_name}"
-        if template_params:
-            message_content += f" - Params: {', '.join(template_params)}"
-        
-        message_data = {
-            "contact_id": contact.id,
-            "content": message_content,
-            "status": "sent" if response.get("messages") else "failed"
-        }
-        
-        message = await create_message(db, message_data)
-        
-        return {
-            "success": True,
-            "message": "Template sent successfully",
-            "whatsapp_response": response,
-            "message_id": message.id
-        }
-        
-    except Exception as e:
-        logger.error(f"Error sending WhatsApp template: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send template: {str(e)}"
-        )
-
-@router.get("/templates")
-async def get_message_templates(current_user: User = Depends(get_current_user)):
-    """Get approved WhatsApp message templates"""
-    try:
-        templates = await whatsapp_service.get_message_templates()
-        return {
-            "success": True,
-            "templates": templates
-        }
-    except Exception as e:
-        logger.error(f"Error getting templates: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get templates: {str(e)}"
-        )
-
-@router.get("/firebase/status")
-async def firebase_status():
-    """Check Firebase Admin configuration status"""
-    import firebase_admin
-    from firebase_admin import auth
-    
-    try:
-        # Check if Firebase Admin is initialized
-        apps = firebase_admin._apps
-        is_initialized = len(apps) > 0
-        
-        # Check environment variables
-        firebase_creds_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "{}")
-        has_creds = firebase_creds_str != "{}" and firebase_creds_str != ""
-        
-        return {
-            "firebase_admin_initialized": is_initialized,
-            "has_firebase_credentials": has_creds,
-            "credentials_length": len(firebase_creds_str),
-            "apps_count": len(apps) if apps else 0,
-            "error": None
-        }
-    except Exception as e:
-        return {
-            "firebase_admin_initialized": False,
-            "has_firebase_credentials": False,
-            "credentials_length": 0,
-            "apps_count": 0,
-            "error": str(e)
-        }
 
 @router.get("/webhook/config")
 async def webhook_config():
