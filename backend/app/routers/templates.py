@@ -318,33 +318,25 @@ async def submit_template_for_approval(
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse variables: {template.variables}")
         
-        # AUTHENTICATION templates require different structure
-        if template.category == "AUTHENTICATION":
-            # For AUTHENTICATION, use "body" with "example" array
-            # The structure should be: { "type": "BODY", "body": "text with {{1}}", "example": { "body": [["value1"]] } }
-            body_component = {
-                "type": "BODY",
-                "body": body_text,
-                "example": {
-                    "body_text": []  # Empty for no variables, or array with examples
+        # For AUTHENTICATION templates, the BODY component uses "text" (same as others)
+        # But we need to add "example" for any variables
+        body_component = {
+            "type": "BODY",
+            "text": body_text
+        }
+        
+        # If AUTHENTICATION template has variables, add example array
+        if template.category == "AUTHENTICATION" and template.variables:
+            try:
+                variables = json.loads(template.variables)
+                examples = []
+                for i in range(len(variables)):
+                    examples.append([f"value{i+1}"])
+                body_component["example"] = {
+                    "body_text": examples
                 }
-            }
-            
-            # If there are variables, add them to the example
-            if template.variables:
-                try:
-                    variables = json.loads(template.variables)
-                    examples = []
-                    for i in range(len(variables)):
-                        examples.append([f"value{i+1}"])
-                    body_component["example"]["body_text"] = examples
-                except:
-                    pass
-        else:
-            body_component = {
-                "type": "BODY",
-                "text": body_text
-            }
+            except:
+                pass
         
         components.append(body_component)
         
