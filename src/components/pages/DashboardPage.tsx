@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
-import WhatsAppMessage from '@/components/WhatsAppMessage'
 import FAQManagement from '@/components/pages/FAQManagement'
 import CatalogManagement from '@/components/pages/CatalogManagement'
 import MessageLogsPage from '@/components/pages/MessageLogsPage'
@@ -24,13 +23,12 @@ import {
   Bug,
   Check,
   X,
-  Phone,
   ClockCounterClockwise,
   FileText,
   ChatCircleText
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'whatsapp' | 'faqs' | 'logs' | 'contacts' | 'templates' | 'conversations'
+type DashboardSection = 'overview' | 'automation' | 'catalog' | 'analytics' | 'api-test' | 'faqs' | 'logs' | 'contacts' | 'templates' | 'conversations'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -110,7 +108,6 @@ export default function DashboardPage() {
   const sidebarItems = [
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
     { id: 'conversations' as const, label: 'Conversas', icon: ChatCircleText },
-    { id: 'whatsapp' as const, label: 'WhatsApp', icon: Phone },
     { id: 'contacts' as const, label: 'Contatos', icon: Users },
     { id: 'templates' as const, label: 'Templates', icon: FileText },
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
@@ -386,21 +383,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
-          </div>
-        )
-      
-      case 'whatsapp':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">WhatsApp Business</h2>
-              <p className="text-muted-foreground">
-                Envie mensagens diretamente via WhatsApp Business API
-              </p>
-            </div>
-            <WhatsAppMessage onMessageSent={() => {
-              toast.success('Mensagem enviada!')
-            }} />
           </div>
         )
       
