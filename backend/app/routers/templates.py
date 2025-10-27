@@ -278,9 +278,14 @@ async def submit_template_for_approval(
                 detail=f"Template is already {template.status}"
             )
         
-        # If rejected, clear the rejection reason when resubmitting
+        # If rejected, modify the name to avoid conflicts with previous submission
+        template_name = template.name.lower().replace(" ", "_")
         if template.status == "rejected":
             logger.info(f"Resubmitting rejected template: {template.name}")
+            # Add timestamp to template name to avoid conflicts with previous rejected submission
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            template_name = f"{template_name}_{timestamp}"
         
         # Build WhatsApp components
         components = []
@@ -332,7 +337,7 @@ async def submit_template_for_approval(
         
         # Submit to WhatsApp
         result = await whatsapp_service.submit_template_for_approval(
-            name=template.name.lower().replace(" ", "_"),  # Ensure proper format
+            name=template_name,  # Use modified name if rejected
             category=template.category,
             language=template.language,
             components=components
