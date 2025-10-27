@@ -305,6 +305,7 @@ async def submit_template_for_approval(
             logger.warning(f"HEADER component not supported for AUTHENTICATION category. Skipping header text: {template.header_text}")
         
         # Add BODY component (required)
+        # For AUTHENTICATION templates, use "example" instead of "text"
         body_text = template.body_text
         
         # Parse variables and replace with WhatsApp format
@@ -317,10 +318,35 @@ async def submit_template_for_approval(
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse variables: {template.variables}")
         
-        components.append({
-            "type": "BODY",
-            "text": body_text
-        })
+        # AUTHENTICATION templates require different structure
+        if template.category == "AUTHENTICATION":
+            # For AUTHENTICATION, use "body" with "example" array
+            # The structure should be: { "type": "BODY", "body": "text with {{1}}", "example": { "body": [["value1"]] } }
+            body_component = {
+                "type": "BODY",
+                "body": body_text,
+                "example": {
+                    "body_text": []  # Empty for no variables, or array with examples
+                }
+            }
+            
+            # If there are variables, add them to the example
+            if template.variables:
+                try:
+                    variables = json.loads(template.variables)
+                    examples = []
+                    for i in range(len(variables)):
+                        examples.append([f"value{i+1}"])
+                    body_component["example"]["body_text"] = examples
+                except:
+                    pass
+        else:
+            body_component = {
+                "type": "BODY",
+                "text": body_text
+            }
+        
+        components.append(body_component)
         
         # Add FOOTER component if exists
         # Note: FOOTER is not supported for AUTHENTICATION category templates
