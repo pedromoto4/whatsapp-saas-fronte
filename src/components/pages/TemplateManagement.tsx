@@ -572,8 +572,8 @@ export default function TemplateManagement() {
                 )}
 
                 <div className="space-y-2 pt-2">
-                  {/* Submit for approval button - only for draft templates */}
-                  {template.status === 'draft' && (
+                  {/* Submit for approval button - only for draft or rejected templates */}
+                  {(template.status === 'draft' || template.status === 'rejected') && (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -581,7 +581,7 @@ export default function TemplateManagement() {
                       onClick={() => submitTemplateForApproval(template)}
                     >
                       <CloudArrowUp size={16} className="mr-2" />
-                      Submeter para Aprovação WhatsApp
+                      {template.status === 'rejected' ? 'Reenviar para Aprovação WhatsApp' : 'Submeter para Aprovação WhatsApp'}
                     </Button>
                   )}
                   

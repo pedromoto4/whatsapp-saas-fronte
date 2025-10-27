@@ -271,11 +271,16 @@ async def submit_template_for_approval(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
         
         # Check if already submitted
+        # Allow draft or rejected templates to be submitted
         if template.status in ["pending", "approved"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Template is already {template.status}"
             )
+        
+        # If rejected, clear the rejection reason when resubmitting
+        if template.status == "rejected":
+            logger.info(f"Resubmitting rejected template: {template.name}")
         
         # Build WhatsApp components
         components = []
@@ -334,10 +339,12 @@ async def submit_template_for_approval(
         )
         
         # Update template status to pending
+        # If resubmitting a rejected template, clear the rejection reason
         from app.schemas import TemplateUpdate
         template_update = TemplateUpdate(
             status="pending",
-            whatsapp_template_id=result.get("template_id")
+            whatsapp_template_id=result.get("template_id"),
+            rejection_reason=None  # Clear rejection reason when resubmitting
         )
         await update_template(db, template_id, current_user.id, template_update)
         
