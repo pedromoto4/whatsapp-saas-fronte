@@ -3,8 +3,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks, Image, File, VideoCamera, MusicNote, X, Upload } from '@phosphor-icons/react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks, Image, File, VideoCamera, MusicNote, X, Upload, ShoppingBag } from '@phosphor-icons/react'
 import type { Conversation, Message } from './ConversationsPage'
+
+interface CatalogProduct {
+  id: number
+  name: string
+  price: string
+  image_url?: string
+  description?: string
+}
 
 interface ChatWindowProps {
   conversation?: Conversation
@@ -30,6 +40,10 @@ export default function ChatWindow({
     media_type: string
     public_url: string
   } | null>(null)
+  const [showProductDialog, setShowProductDialog] = useState(false)
+  const [products, setProducts] = useState<CatalogProduct[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
+  const [sendingProduct, setSendingProduct] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevMessageCountRef = useRef(messages.length)
 
@@ -148,6 +162,73 @@ export default function ChatWindow({
       alert('Erro ao enviar media')
     } finally {
       setSending(false)
+    }
+  }
+
+  const loadProducts = async () => {
+    setLoadingProducts(true)
+    try {
+      const token = localStorage.getItem('firebase_token')
+      const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/api/catalog/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setProducts(data)
+      }
+    } catch (error) {
+      console.error('Error loading products:', error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  const handleOpenProductDialog = () => {
+    setShowProductDialog(true)
+    if (products.length === 0) {
+      loadProducts()
+    }
+  }
+
+  const handleSendProduct = async (product: CatalogProduct) => {
+    if (!conversation || sendingProduct) return
+
+    setSendingProduct(true)
+    try {
+      const token = localStorage.getItem('firebase_token')
+      const response = await fetch(
+        `https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/send-product/${product.id}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to send product')
+      }
+
+      setShowProductDialog(false)
+      
+      // Refresh messages elegantly
+      if (onRefreshMessages) {
+        await onRefreshMessages()
+      } else {
+        // Fallback to page reload
+        window.location.reload()
+      }
+    } catch (error) {
+      console.error('Error sending product:', error)
+      alert('Erro ao enviar produto')
+    } finally {
+      setSendingProduct(false)
     }
   }
 
@@ -442,6 +523,17 @@ export default function ChatWindow({
             </Button>
           </div>
 
+          {/* Product Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleOpenProductDialog}
+            disabled={sending || sendingProduct}
+            title="Enviar produto do catálogo"
+          >
+            <ShoppingBag size={20} />
+          </Button>
+
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
@@ -462,6 +554,52 @@ export default function ChatWindow({
           Pressione Enter para enviar
         </p>
       </div>
+
+      {/* Product Selection Dialog */}
+      <Dialog open={showProductDialog} onOpenChange={setShowProductDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Enviar Produto do Catálogo</DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="h-[400px] pr-4">
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-muted-foreground">Carregando produtos...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <ShoppingBag size={48} className="text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhum produto no catálogo</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Adicione produtos em "Catálogo" no menu lateral
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {products.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => handleSendProduct(product)}
+                    disabled={sendingProduct}
+                    className="p-4 border rounded-lg hover:bg-accent transition-colors text-left disabled:opacity-50"
+                  >
+                    {product.image_url && (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-32 object-cover rounded-md mb-2"
+                      />
+                    )}
+                    <h3 className="font-medium truncate">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">Preço: {product.price}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* Image Modal */}
       {selectedImage && (
