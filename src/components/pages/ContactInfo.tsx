@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Conversation } from './ConversationsPage'
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 
 interface ContactInfoProps {
   conversation: Conversation
@@ -64,10 +65,90 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
   const displayPhone = conversation.phone_number
   const profilePictureUrl = null // WhatsApp doesn't provide profile pictures via API
 
-  const handleSave = () => {
-    // TODO: Implement API call to save notes and name
-    console.log('Saving contact info:', { name, notes })
-    setIsEditing(false)
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('firebase_token')
+      if (!token) {
+        toast.error('Token de autenticação não encontrado')
+        return
+      }
+
+      // First, get or create the contact
+      let contactId: number | null = null
+      
+      try {
+        const getContactResponse = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (getContactResponse.ok) {
+          const contacts = await getContactResponse.json()
+          const existingContact = contacts.contacts.find((c: any) => c.phone_number === conversation.phone_number)
+          if (existingContact) {
+            contactId = existingContact.id
+          }
+        }
+      } catch (error) {
+        console.error('Error getting contacts:', error)
+      }
+
+      // If contact doesn't exist, create it
+      if (!contactId) {
+        const createResponse = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phone_number: conversation.phone_number,
+            name: name,
+            notes: notes,
+            tags: contactData?.tags
+          })
+        })
+
+        if (createResponse.ok) {
+          toast.success('Contacto criado com sucesso!')
+          setIsEditing(false)
+          return
+        } else {
+          const error = await createResponse.json()
+          toast.error(error.detail || 'Erro ao criar contacto')
+          return
+        }
+      }
+
+      // Update existing contact
+      const updateResponse = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/${contactId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: name,
+          notes: notes,
+          tags: contactData?.tags
+        })
+      })
+
+      if (updateResponse.ok) {
+        toast.success('Informações atualizadas!')
+        setIsEditing(false)
+        // Update local state
+        setContactData(prev => prev ? { ...prev, database_name: name } : null)
+      } else {
+        const error = await updateResponse.json()
+        toast.error(error.detail || 'Erro ao atualizar contacto')
+      }
+    } catch (error) {
+      console.error('Error saving contact info:', error)
+      toast.error('Erro ao salvar informações')
+    }
   }
 
   return (
