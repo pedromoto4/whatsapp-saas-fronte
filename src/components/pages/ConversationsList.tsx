@@ -74,7 +74,15 @@ export default function ConversationsList({
       <div className="p-4 border-b bg-background space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Conversas</h2>
-          <p className="text-sm text-muted-foreground">{conversations.length}</p>
+          <Button size="sm" onClick={() => {
+            const phone = prompt('Digite o número de telefone (ex: +351910000000)')
+            if (phone && phone.trim()) {
+              onSelectConversation(phone.trim())
+            }
+          }}>
+            <ChatCircle size={16} className="mr-1" />
+            Novo Chat
+          </Button>
         </div>
         
         {/* Search bar */}
