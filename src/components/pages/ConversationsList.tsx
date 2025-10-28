@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { ChatCircle, Robot, MagnifyingGlass, Funnel, X, ArchiveBox, Tag } from '@phosphor-icons/react'
+import { ChatCircle, Robot, MagnifyingGlass, Funnel, X, ArchiveBox, Tag, UserPlus } from '@phosphor-icons/react'
 import type { Conversation } from './ConversationsPage'
 
 interface ConversationsListProps {
@@ -74,15 +74,53 @@ export default function ConversationsList({
       <div className="p-4 border-b bg-background space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Conversas</h2>
-          <Button size="sm" onClick={() => {
-            const phone = prompt('Digite o número de telefone (ex: +351910000000)')
-            if (phone && phone.trim()) {
-              onSelectConversation(phone.trim())
-            }
-          }}>
-            <ChatCircle size={16} className="mr-1" />
-            Novo Chat
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={async () => {
+              const phone = prompt('Digite o número de telefone (ex: +351910000000)')
+              if (phone && phone.trim()) {
+                // Create contact first
+                try {
+                  const token = localStorage.getItem('firebase_token')
+                  if (token) {
+                    const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        phone_number: phone.trim(),
+                        name: phone.trim()
+                      })
+                    })
+                    
+                    if (response.ok) {
+                      // Contact created or already exists, now open chat
+                      onSelectConversation(phone.trim())
+                    } else {
+                      // If contact already exists, just open chat
+                      onSelectConversation(phone.trim())
+                    }
+                  }
+                } catch (error) {
+                  // If error, still try to open chat
+                  onSelectConversation(phone.trim())
+                }
+              }
+            }}>
+              <UserPlus size={16} className="mr-1" />
+              Adicionar
+            </Button>
+            <Button size="sm" onClick={() => {
+              const phone = prompt('Digite o número de telefone (ex: +351910000000)')
+              if (phone && phone.trim()) {
+                onSelectConversation(phone.trim())
+              }
+            }}>
+              <ChatCircle size={16} className="mr-1" />
+              Novo Chat
+            </Button>
+          </div>
         </div>
         
         {/* Search bar */}
