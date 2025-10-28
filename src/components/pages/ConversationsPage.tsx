@@ -308,7 +308,20 @@ export default function ConversationsPage() {
         {/* Chat Window */}
         <div className="flex-1 flex flex-col">
           <ChatWindow
-            conversation={conversations.find(c => c.phone_number === activeConversation)}
+            conversation={
+              conversations.find(c => c.phone_number === activeConversation) || 
+              (activeConversation ? {
+                phone_number: activeConversation,
+                contact_name: undefined,
+                last_message: '',
+                last_message_time: new Date().toISOString(),
+                direction: 'out' as const,
+                unread_count: 0,
+                is_automated: false,
+                is_archived: false,
+                tags: null
+              } : undefined)
+            }
             messages={messages}
             onSendMessage={sendMessage}
             onRefreshMessages={loadMessages}
@@ -319,7 +332,20 @@ export default function ConversationsPage() {
         {/* Contact Info Sidebar */}
         {activeConversation && showContactInfo && (
           <ContactInfo
-            conversation={conversations.find(c => c.phone_number === activeConversation)!}
+            conversation={
+              conversations.find(c => c.phone_number === activeConversation) || 
+              {
+                phone_number: activeConversation,
+                contact_name: undefined,
+                last_message: '',
+                last_message_time: new Date().toISOString(),
+                direction: 'out' as const,
+                unread_count: 0,
+                is_automated: false,
+                is_archived: false,
+                tags: null
+              }
+            }
             messageCount={messages.length}
             onClose={() => setShowContactInfo(false)}
           />
