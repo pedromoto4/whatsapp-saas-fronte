@@ -15,7 +15,8 @@ from app.crud import (
     get_conversation_messages,
     get_contact_by_phone,
     create_contact_from_webhook,
-    create_message_log
+    create_message_log,
+    get_catalog_item
 )
 from app.whatsapp_service import whatsapp_service
 
@@ -340,5 +341,93 @@ async def unarchive_conversation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to unarchive conversation: {str(e)}"
+        )
+
+@router.post("/{phone_number}/send-product/{product_id}")
+async def send_product(
+    phone_number: str,
+    product_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Send a catalog product as a message with image"""
+    try:
+        # Get the product from catalog
+        product = await get_catalog_item(db, product_id, current_user.id)
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Product not found"
+            )
+        
+        # Ensure contact exists
+        contact = await get_contact_by_phone(db, phone_number)
+        if not contact:
+            # Create contact if doesn't exist
+            contact_data = {
+                "phone_number": phone_number,
+                "name": phone_number,
+                "owner_id": current_user.id
+            }
+            contact = await create_contact_from_webhook(db, contact_data)
+        
+        # Build the caption message
+        caption = f"🏷️ Produto: {product.name}\n"
+        caption += f"💰 Preço: {product.price}\n"
+        if product.description:
+            caption += f"📝 Descrição: {product.description}"
+        
+        # Send image via WhatsApp (if product has image)
+        if product.image_url:
+            response = await whatsapp_service.send_media_message(
+                to=phone_number,
+                media_url=product.image_url,
+                media_type="image",
+                caption=caption
+            )
+        else:
+            # If no image, send as text message
+            response = await whatsapp_service.send_message(
+                to=phone_number,
+                message=caption
+            )
+        
+        # Extract message ID from WhatsApp response
+        whatsapp_message_id = None
+        if response.get("messages"):
+            whatsapp_message_id = response["messages"][0].get("id")
+        
+        # Log the outgoing message
+        log_data = MessageLogCreate(
+            owner_id=current_user.id,
+            direction="out",
+            kind="catalog" if product.image_url else "text",
+            to_from=phone_number,
+            content=caption,
+            cost_estimate="0.005",
+            status="sent",
+            whatsapp_message_id=whatsapp_message_id,
+            media_url=product.image_url if product.image_url else None,
+            media_type="image" if product.image_url else None,
+            media_filename=f"{product.name}.jpg" if product.image_url else None
+        )
+        await create_message_log(db, log_data)
+        
+        logger.info(f"Product '{product.name}' sent to {phone_number}")
+        
+        return {
+            "status": "success",
+            "message": "Product sent successfully",
+            "product_name": product.name,
+            "whatsapp_response": response
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending product to {phone_number}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send product: {str(e)}"
         )
 
