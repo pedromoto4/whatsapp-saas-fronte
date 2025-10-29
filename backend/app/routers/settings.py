@@ -18,6 +18,61 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
+@router.post("/db/add-ai-enabled-column")
+async def add_ai_enabled_column(db: AsyncSession = Depends(get_db)):
+    """
+    Temporary endpoint to add ai_enabled column to users and contacts tables
+    """
+    try:
+        from sqlalchemy import text
+        
+        # Check if column exists in users table
+        check_users = text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='users' 
+            AND column_name='ai_enabled'
+        """)
+        result_users = await db.execute(check_users)
+        has_users_column = result_users.fetchone() is not None
+        
+        if not has_users_column:
+            alter_users = text("ALTER TABLE users ADD COLUMN ai_enabled BOOLEAN DEFAULT TRUE")
+            await db.execute(alter_users)
+            logger.info("Added ai_enabled column to users table")
+        
+        # Check if column exists in contacts table
+        check_contacts = text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='contacts' 
+            AND column_name='ai_enabled'
+        """)
+        result_contacts = await db.execute(check_contacts)
+        has_contacts_column = result_contacts.fetchone() is not None
+        
+        if not has_contacts_column:
+            alter_contacts = text("ALTER TABLE contacts ADD COLUMN ai_enabled BOOLEAN")
+            await db.execute(alter_contacts)
+            logger.info("Added ai_enabled column to contacts table")
+        
+        await db.commit()
+        
+        return {
+            "status": "success",
+            "message": "✅ Columns added successfully",
+            "users_column": "created" if not has_users_column else "already exists",
+            "contacts_column": "created" if not has_contacts_column else "already exists"
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error adding columns: {e}")
+        return {
+            "status": "error",
+            "message": f"Failed to add columns: {str(e)}"
+        }
+
 @router.get("/ai-enabled")
 async def get_ai_enabled(
     current_user: User = Depends(get_current_user),

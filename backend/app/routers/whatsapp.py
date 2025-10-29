@@ -548,11 +548,19 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             # No FAQ matched - try AI fallback (if enabled)
                             logger.info(f"No FAQ or catalog matched for message: {message_text}")
                             
-                            # Check if AI is enabled for this user
-                            from app.crud import get_user_by_id
-                            user = await get_user_by_id(db, contact.owner_id)
-                            ai_enabled = getattr(user, 'ai_enabled', True)  # Default to True
+                            # Check if AI is enabled for this contact/user
+                            # First check contact override, then user setting
+                            contact_ai_enabled = getattr(contact, 'ai_enabled', None)
                             
+                            if contact_ai_enabled is None:
+                                # Use user setting
+                                from app.crud import get_user_by_id
+                                user = await get_user_by_id(db, contact.owner_id)
+                                ai_enabled = getattr(user, 'ai_enabled', True)  # Default to True
+                            else:
+                                # Use contact override
+                                ai_enabled = contact_ai_enabled
+            
                             if ai_enabled:
                                 try:
                                     # Get FAQs and catalog for context

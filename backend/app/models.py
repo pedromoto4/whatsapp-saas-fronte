@@ -33,6 +33,7 @@ class Contact(Base):
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     is_archived = Column(Boolean, default=False)  # Archive conversation
+    ai_enabled = Column(Boolean, nullable=True)  # None = use user setting, True/False = override
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
