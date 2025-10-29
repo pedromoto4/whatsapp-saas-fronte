@@ -545,49 +545,57 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             except Exception as e:
                                 logger.error(f"Failed to send FAQ response: {e}")
                         else:
-                            # No FAQ matched - try AI fallback
+                            # No FAQ matched - try AI fallback (if enabled)
                             logger.info(f"No FAQ or catalog matched for message: {message_text}")
                             
-                            try:
-                                # Get FAQs and catalog for context
-                                faqs = await get_faqs(db, contact.owner_id)
-                                catalog = await get_catalog_items(db, contact.owner_id)
-                                
-                                # Prepare context
-                                faq_list = [{"question": faq.question, "answer": faq.answer} for faq in faqs]
-                                catalog_list = [{"name": item.name, "price": item.price} for item in catalog]
-                                
-                                # Generate AI response
-                                ai_response = await ai_service.generate_fallback_response(
-                                    user_message=message_text,
-                                    faqs=faq_list,
-                                    catalog_items=catalog_list
-                                )
-                                
-                                if ai_response:
-                                    logger.info(f"AI generated response: {ai_response[:50]}...")
-                                    await whatsapp_service.send_message(
-                                        to=phone_number,
-                                        message=ai_response
+                            # Check if AI is enabled for this user
+                            from app.crud import get_user_by_id
+                            user = await get_user_by_id(db, contact.owner_id)
+                            ai_enabled = getattr(user, 'ai_enabled', True)  # Default to True
+                            
+                            if ai_enabled:
+                                try:
+                                    # Get FAQs and catalog for context
+                                    faqs = await get_faqs(db, contact.owner_id)
+                                    catalog = await get_catalog_items(db, contact.owner_id)
+                                    
+                                    # Prepare context
+                                    faq_list = [{"question": faq.question, "answer": faq.answer} for faq in faqs]
+                                    catalog_list = [{"name": item.name, "price": item.price} for item in catalog]
+                                    
+                                    # Generate AI response
+                                    ai_response = await ai_service.generate_fallback_response(
+                                        user_message=message_text,
+                                        faqs=faq_list,
+                                        catalog_items=catalog_list
                                     )
                                     
-                                    # Log AI response
-                                    out_log = MessageLogCreate(
-                                        owner_id=contact.owner_id,
-                                        direction="out",
-                                        kind="text",
-                                        to_from=phone_number,
-                                        content=ai_response,
-                                        cost_estimate="0.015",  # AI responses cost more
-                                        is_automated=True
-                                    )
-                                    await create_message_log(db, out_log)
-                                    logger.info(f"AI response sent to {phone_number}")
-                                else:
-                                    logger.info(f"AI not configured or failed - no response sent")
-                                    
-                            except Exception as e:
-                                logger.error(f"Failed to generate AI response: {e}")
+                                    if ai_response:
+                                        logger.info(f"AI generated response: {ai_response[:50]}...")
+                                        await whatsapp_service.send_message(
+                                            to=phone_number,
+                                            message=ai_response
+                                        )
+                                        
+                                        # Log AI response
+                                        out_log = MessageLogCreate(
+                                            owner_id=contact.owner_id,
+                                            direction="out",
+                                            kind="text",
+                                            to_from=phone_number,
+                                            content=ai_response,
+                                            cost_estimate="0.015",  # AI responses cost more
+                                            is_automated=True
+                                        )
+                                        await create_message_log(db, out_log)
+                                        logger.info(f"AI response sent to {phone_number}")
+                                    else:
+                                        logger.info(f"AI not configured or failed - no response sent")
+                                        
+                                except Exception as e:
+                                    logger.error(f"Failed to generate AI response: {e}")
+                            else:
+                                logger.info(f"AI responses disabled for user {contact.owner_id} - no response sent")
                     
                     # Save incoming message to messages table
                     message_data = {
