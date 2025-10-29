@@ -1,8 +1,10 @@
-import { X, PencilSimple, FloppyDisk, Phone, Clock, FileText } from '@phosphor-icons/react'
+import { X, PencilSimple, FloppyDisk, Phone, Clock, FileText, Robot } from '@phosphor-icons/react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import type { Conversation } from './ConversationsPage'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -29,6 +31,10 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
   const [name, setName] = useState(conversation.contact_name || '')
   const [contactData, setContactData] = useState<ContactData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null)  // null = use global, true/false = override
+  const [aiSource, setAiSource] = useState<'user' | 'contact'>('user')
+  const [loadingAI, setLoadingAI] = useState(true)
+  const [savingAI, setSavingAI] = useState(false)
 
   useEffect(() => {
     const loadContactInfo = async () => {
@@ -59,7 +65,67 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
     }
     
     loadContactInfo()
+    loadAISetting()
   }, [conversation.phone_number])
+
+  const loadAISetting = async () => {
+    try {
+      const token = localStorage.getItem('firebase_token')
+      if (!token) return
+
+      const response = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/ai-enabled`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setAiEnabled(data.contact_override)
+        setAiSource(data.source)
+      }
+    } catch (error) {
+      console.error('Error loading AI setting:', error)
+    } finally {
+      setLoadingAI(false)
+    }
+  }
+
+  const handleToggleAI = async (newValue: boolean | null) => {
+    setSavingAI(true)
+    try {
+      const token = localStorage.getItem('firebase_token')
+      if (!token) {
+        toast.error('Token de autenticação não encontrado')
+        return
+      }
+
+      const response = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/ai-enabled`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled: newValue })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setAiEnabled(newValue)
+        setAiSource(newValue === null ? 'user' : 'contact')
+        toast.success(data.message || 'Configuração atualizada')
+      } else {
+        const error = await response.json()
+        toast.error(error.detail || 'Erro ao atualizar configuração')
+      }
+    } catch (error) {
+      console.error('Error updating AI setting:', error)
+      toast.error('Erro de conexão')
+    } finally {
+      setSavingAI(false)
+    }
+  }
 
   const displayName = name || conversation.contact_name || contactData?.database_name || conversation.phone_number
   const displayPhone = conversation.phone_number
@@ -218,6 +284,77 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
               <p className="text-sm text-muted-foreground">{messageCount} mensagens</p>
             </div>
           </div>
+        </div>
+
+        {/* AI Settings Section */}
+        <div className="mb-6 p-4 border rounded-lg bg-card">
+          <div className="flex items-center gap-2 mb-3">
+            <Robot size={20} className="text-muted-foreground" />
+            <h4 className="text-sm font-semibold">Respostas por IA</h4>
+          </div>
+          
+          {loadingAI ? (
+            <p className="text-xs text-muted-foreground">Carregando...</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5 flex-1">
+                  <Label htmlFor="ai-contact" className="text-sm cursor-pointer">
+                    {aiEnabled === null 
+                      ? 'Usar configuração global'
+                      : aiEnabled 
+                      ? 'Ativado para este contacto'
+                      : 'Desativado para este contacto'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {aiEnabled === null 
+                      ? 'Usa a configuração geral das Configurações'
+                      : aiEnabled
+                      ? 'Este contacto receberá respostas por IA mesmo se desativado globalmente'
+                      : 'Este contacto NÃO receberá respostas por IA mesmo se ativado globalmente'}
+                  </p>
+                </div>
+                {aiSource === 'contact' && (
+                  <Switch
+                    id="ai-contact"
+                    checked={aiEnabled === true}
+                    onCheckedChange={(checked) => handleToggleAI(checked)}
+                    disabled={savingAI}
+                  />
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={aiEnabled === null ? "default" : "outline"}
+                  onClick={() => handleToggleAI(null)}
+                  disabled={savingAI}
+                  className="flex-1"
+                >
+                  Global
+                </Button>
+                <Button
+                  size="sm"
+                  variant={aiEnabled === true ? "default" : "outline"}
+                  onClick={() => handleToggleAI(true)}
+                  disabled={savingAI}
+                  className="flex-1"
+                >
+                  Ativar
+                </Button>
+                <Button
+                  size="sm"
+                  variant={aiEnabled === false ? "default" : "outline"}
+                  onClick={() => handleToggleAI(false)}
+                  disabled={savingAI}
+                  className="flex-1"
+                >
+                  Desativar
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Notes Section */}

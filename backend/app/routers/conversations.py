@@ -4,12 +4,13 @@ Handles WhatsApp-style conversation management
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 import logging
 
 from app.dependencies import get_current_user, get_db
 from app.models import User
 from app.schemas import ConversationResponse, ConversationMessageResponse, MessageSendRequest, MessageLogCreate
+from pydantic import BaseModel
 from app.crud import (
     get_conversations, 
     get_conversation_messages,
@@ -429,5 +430,134 @@ async def send_product(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send product: {str(e)}"
+        )
+
+@router.get("/{phone_number}/ai-enabled")
+async def get_contact_ai_enabled(
+    phone_number: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get AI enabled status for a specific contact"""
+    try:
+        contact = await get_contact_by_phone(db, phone_number)
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Contact not found"
+            )
+        
+        # Ensure contact belongs to current user
+        if contact.owner_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+        
+        # Get contact's ai_enabled status (None = use user setting)
+        contact_ai_enabled = getattr(contact, 'ai_enabled', None)
+        
+        # If contact has no override, get user setting
+        if contact_ai_enabled is None:
+            from app.crud import get_user_by_id
+            user = await get_user_by_id(db, current_user.id)
+            user_ai_enabled = getattr(user, 'ai_enabled', True)
+            return {
+                "ai_enabled": user_ai_enabled,
+                "source": "user",  # 'user' or 'contact'
+                "contact_override": None
+            }
+        
+        return {
+            "ai_enabled": contact_ai_enabled,
+            "source": "contact",
+            "contact_override": contact_ai_enabled
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting contact AI enabled status: {e}")
+        # Default to user setting on error
+        from app.crud import get_user_by_id
+        user = await get_user_by_id(db, current_user.id)
+        user_ai_enabled = getattr(user, 'ai_enabled', True)
+        return {
+            "ai_enabled": user_ai_enabled,
+            "source": "user",
+            "contact_override": None
+        }
+
+class ContactAIEnabledUpdate(BaseModel):
+    enabled: Optional[bool]  # None = use user setting, True/False = override
+
+@router.put("/{phone_number}/ai-enabled")
+async def update_contact_ai_enabled(
+    phone_number: str,
+    update_data: ContactAIEnabledUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    enabled = update_data.enabled
+    """Update AI enabled status for a specific contact (None = use user setting)"""
+    try:
+        contact = await get_contact_by_phone(db, phone_number)
+        if not contact:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Contact not found"
+            )
+        
+        # Ensure contact belongs to current user
+        if contact.owner_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+        
+        # Check if ai_enabled column exists
+        from sqlalchemy import text, update
+        from app.models import Contact
+        
+        check_query = text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='contacts' 
+            AND column_name='ai_enabled'
+        """)
+        result = await db.execute(check_query)
+        has_column = result.fetchone() is not None
+        
+        if not has_column:
+            # Create column if it doesn't exist
+            alter_query = text("ALTER TABLE contacts ADD COLUMN ai_enabled BOOLEAN")
+            await db.execute(alter_query)
+            await db.commit()
+            logger.info("Created ai_enabled column in contacts table")
+        
+        # Update contact's ai_enabled status
+        await db.execute(
+            update(Contact)
+            .where(Contact.id == contact.id)
+            .values(ai_enabled=enabled)
+        )
+        await db.commit()
+        
+        logger.info(f"Updated AI enabled status for contact {phone_number}: {enabled}")
+        
+        status_text = "usar configuração global" if enabled is None else ("ativado" if enabled else "desativado")
+        return {
+            "ai_enabled": enabled,
+            "message": f"IA para este contacto: {status_text}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating contact AI enabled status: {e}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update contact AI setting: {str(e)}"
         )
 
