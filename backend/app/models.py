@@ -13,6 +13,7 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     subscription_tier = Column(String, default="free")  # free, basic, premium
+    ai_enabled = Column(Boolean, default=True)  # Enable/disable AI responses
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

@@ -10,6 +10,7 @@ import CatalogManagement from '@/components/pages/CatalogManagement'
 import ContactsManagement from '@/components/pages/ContactsManagement'
 import TemplateManagement from '@/components/pages/TemplateManagement'
 import ConversationsPage from '@/components/pages/ConversationsPage'
+import SettingsPage from '@/components/pages/SettingsPage'
 import { 
   Circle, 
   ChartBar, 
@@ -26,7 +27,7 @@ import {
   ChatCircleText
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'templates' | 'conversations'
+type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'templates' | 'conversations' | 'settings'
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -110,6 +111,7 @@ export default function DashboardPage() {
     { id: 'templates' as const, label: 'Templates', icon: FileText },
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
+    { id: 'settings' as const, label: 'Configurações', icon: Gear },
     { id: 'api-test' as const, label: 'Teste API', icon: Bug },
   ]
 
@@ -387,6 +389,9 @@ export default function DashboardPage() {
       
       case 'conversations':
         return <ConversationsPage />
+      
+      case 'settings':
+        return <SettingsPage />
       
       case 'api-test':
         return (
