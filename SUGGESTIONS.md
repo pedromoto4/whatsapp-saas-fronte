@@ -8,7 +8,6 @@
 ### A4. Seções "Coming Soon": "Automation", "Analytics"
 ### A5. API Testing colocar num menu separado para debug
 
-
 ## 🔄 **B. CONSOLIDAR (Unificar Duplicações)**
 
 ### B1. Sistema de Mensagens Unificado ; menu historico de mensagems não é necessario, já existe o menu Conversas
@@ -20,9 +19,6 @@
 ### B3. Contacts + Conversations
 - **Ação:** permitir criação manual de contatos nas conversas, para assim enviar logo templates
 - **Ação:** permitir "enriquecimento" (adicionar nome, tags, notas)
-
-
-
 ## ✨ **C. MELHORAR (Funcionalidades Existentes)**
 ### C1. Conversations como Hub Central
 - **Adicionar:** Permitir enviar produtos do catálogo direto no chat

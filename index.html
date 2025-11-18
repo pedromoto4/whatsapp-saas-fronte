@@ -14,6 +14,27 @@
 <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Firebase redirect handler for Cursor browser -->
+    <script>
+      // Handle Firebase redirect in Cursor browser
+      (function() {
+        if (window.location.hostname.includes('firebaseapp.com')) {
+          const redirectOrigin = localStorage.getItem('auth_redirect_origin') || 'http://localhost:5173';
+          const redirectPath = localStorage.getItem('auth_redirect_path') || '/login';
+          const currentParams = window.location.search;
+          
+          // Clean path (remove index.html if present)
+          let cleanPath = redirectPath.replace('/index.html', '').replace('index.html', '');
+          if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+          
+          // Use hash routing format
+          const hashPath = cleanPath === '/' ? '' : '#' + cleanPath;
+          
+          console.log('Firebase redirect detected, going to:', redirectOrigin + hashPath + currentParams);
+          window.location.href = redirectOrigin + hashPath + currentParams;
+        }
+      })();
+    </script>
 </body>
 
 </html>

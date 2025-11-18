@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ChatCircle, Robot, MagnifyingGlass, Funnel, X, ArchiveBox, Tag, UserPlus } from '@phosphor-icons/react'
+import { ChatCircle, Robot, MagnifyingGlass, Funnel, X, Archive, Tag, UserPlus } from '@phosphor-icons/react'
 import type { Conversation } from './ConversationsPage'
 import { useState } from 'react'
 
@@ -204,7 +204,7 @@ export default function ConversationsList({
             onClick={onToggleArchived}
             className="flex-1"
           >
-            <ArchiveBox size={16} className="mr-2" />
+            <Archive size={16} className="mr-2" />
             {showArchived ? 'Ativas' : 'Arquivadas'}
           </Button>
         </div>
@@ -252,7 +252,7 @@ export default function ConversationsList({
                 className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-background rounded"
                 title={conversation.is_archived ? 'Desarquivar' : 'Arquivar'}
               >
-                <ArchiveBox size={18} className={conversation.is_archived ? 'text-primary' : 'text-muted-foreground'} />
+                <Archive size={18} className={conversation.is_archived ? 'text-primary' : 'text-muted-foreground'} />
               </button>
 
               <div onClick={() => onSelectConversation(conversation.phone_number)} className="flex items-start gap-3 flex-1 cursor-pointer">

@@ -32,3 +32,9 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Environment files with secrets
+ENVIRONMENT="production".yaml
+*.env.production
+*.env.local
+backend/.env

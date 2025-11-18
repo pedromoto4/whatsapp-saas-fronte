@@ -100,10 +100,14 @@ export default function LoginPage() {
             className="w-full"
             onClick={handleGoogleLogin}
             disabled={loading}
+            type="button"
           >
             <GoogleLogo className="mr-2 h-4 w-4" />
             {loading ? 'Conectando...' : 'Continuar com Google'}
           </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Se o popup for bloqueado, será usado redirect automaticamente
+          </p>
 
           <div className="text-center text-sm text-muted-foreground">
             {isRegistering ? 'Já tem conta?' : 'Não tem conta?'}{' '}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Redirecionando...</title>
+  <script>
+    // This page handles Firebase auth redirects
+    // It will redirect back to the main app
+    
+    (function() {
+      // Get the redirect URI from localStorage or default to localhost
+      const redirectUri = localStorage.getItem('auth_redirect_uri') || 'http://localhost:5173';
+      
+      // Clear the stored redirect URI
+      localStorage.removeItem('auth_redirect_uri');
+      
+      // Redirect to the main app
+      window.location.href = redirectUri;
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecionando...</p>
+</body>
+</html>
+
