@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { PaperPlaneRight, Robot, User as UserIcon, Check, Checks, Image, File, VideoCamera, MusicNote, X, Upload, ShoppingBag } from '@phosphor-icons/react'
 import type { Conversation, Message } from './ConversationsPage'
+import { getApiBaseUrl } from '@/lib/api-config'
 
 interface CatalogProduct {
   id: number
@@ -101,7 +102,7 @@ export default function ChatWindow({
       formData.append('file', file)
 
       const token = localStorage.getItem('firebase_token')
-      const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/upload', {
+      const response = await fetch(`${getApiBaseUrl()}/whatsapp/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -129,7 +130,7 @@ export default function ChatWindow({
     setSending(true)
     try {
       const token = localStorage.getItem('firebase_token')
-      const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/send-media', {
+      const response = await fetch(`${getApiBaseUrl()}/whatsapp/send-media`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -169,7 +170,7 @@ export default function ChatWindow({
     setLoadingProducts(true)
     try {
       const token = localStorage.getItem('firebase_token')
-      const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/api/catalog/', {
+      const response = await fetch(`${getApiBaseUrl()}/api/catalog/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -201,7 +202,7 @@ export default function ChatWindow({
     try {
       const token = localStorage.getItem('firebase_token')
       const response = await fetch(
-        `https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/send-product/${product.id}`,
+        `${getApiBaseUrl()}/api/conversations/${conversation.phone_number}/send-product/${product.id}`,
         {
           method: 'POST',
           headers: {
@@ -285,7 +286,7 @@ export default function ChatWindow({
         imageUrl = mediaUrl
       } else {
         // It's a WhatsApp media ID, use proxy endpoint
-        imageUrl = `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
+        imageUrl = `${getApiBaseUrl()}/whatsapp/media/${mediaUrl}`
       }
         
       return (
@@ -339,7 +340,7 @@ export default function ChatWindow({
         finalMediaUrl = mediaUrl
       } else {
         // It's a WhatsApp media ID, use proxy endpoint
-        finalMediaUrl = `https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/media/${mediaUrl}`
+        finalMediaUrl = `${getApiBaseUrl()}/whatsapp/media/${mediaUrl}`
       }
     }
 

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import ConversationsList from './ConversationsList'
 import ChatWindow from './ChatWindow'
 import ContactInfo from './ContactInfo'
+import { getApiBaseUrl } from '@/lib/api-config'
 
 export interface Conversation {
   phone_number: string
@@ -43,7 +44,7 @@ export default function ConversationsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [showContactInfo, setShowContactInfo] = useState(true) // Show by default
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
+  const API_BASE_URL = getApiBaseUrl()
 
   const getAuthToken = () => {
     const token = localStorage.getItem('firebase_token')
@@ -59,7 +60,7 @@ export default function ConversationsPage() {
     try {
       if (!silent) setLoading(true)
       const token = getAuthToken()
-      if (!token) return
+      if (!token) return null
 
       const response = await fetch(`${API_BASE_URL}/api/conversations/`, {
         headers: {
@@ -81,11 +82,18 @@ export default function ConversationsPage() {
         
         previousUnreadCountRef.current = totalUnread
         setConversations(data)
+        return data
       } else if (!silent) {
-        toast.error('Erro ao carregar conversas')
+        const errorData = await response.json().catch(() => ({ detail: 'Erro ao carregar conversas' }))
+        toast.error(errorData.detail || 'Erro ao carregar conversas')
       }
+      return null
     } catch (error) {
-      if (!silent) toast.error('Erro de conexão')
+      if (!silent) {
+        console.error('Error loading conversations:', error)
+        toast.error('Erro de conexão')
+      }
+      return null
     } finally {
       setLoading(false)
     }
@@ -194,10 +202,13 @@ export default function ConversationsPage() {
 
   // Load conversations on mount and initialize counter
   useEffect(() => {
-    loadConversations().then(() => {
+    loadConversations().then((data) => {
       // Initialize previous count to current count (avoid false notification on first load)
-      const totalUnread = conversations.reduce((sum, conv) => sum + conv.unread_count, 0)
-      previousUnreadCountRef.current = totalUnread
+      // Use the data from loadConversations instead of state
+      if (data) {
+        const totalUnread = data.reduce((sum: number, conv: Conversation) => sum + conv.unread_count, 0)
+        previousUnreadCountRef.current = totalUnread
+      }
     })
   }, [])
 

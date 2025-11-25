@@ -38,50 +38,25 @@ function usePersistentState<T>(key: string, defaultValue: T): [T, (value: T | ((
   return [state, setValue]
 }
 
-// TEMPORARY: Bypass for testing - remove in production
-const TEST_USER_UID = 'SBPt6FyYHuVsu3TM1H7h5kLFp5q2'
-const ENABLE_TEST_BYPASS = true // Set to false to disable
-
 export function useAuth() {
   const [user, setUser] = usePersistentState<User | null>('auth-user', null)
   const [isLoggedIn, setIsLoggedIn] = usePersistentState<boolean>('auth-is-logged-in', false)
   const [loading, setLoading] = useState(true) // Start with true to show loading initially
-
-  // Helper to check if test bypass is enabled
-  const isTestBypassEnabled = () => {
-    return ENABLE_TEST_BYPASS && typeof window !== 'undefined' && localStorage.getItem('test_bypass_enabled') !== 'false'
-  }
-
-  // TEMPORARY: Bypass for testing
+  
+  // Clean up test tokens on mount (one-time cleanup)
   useEffect(() => {
-    if (isTestBypassEnabled()) {
-      console.log('🧪 TEST MODE: Auto-login enabled for user:', TEST_USER_UID)
-      
-      // Set test user
-      const testUser: User = {
-        uid: TEST_USER_UID,
-        email: 'test@example.com',
-        displayName: 'Test User'
-      }
-      
-      setUser(testUser)
-      setIsLoggedIn(true)
-      setLoading(false)
-      
-      // Set a mock token
-      localStorage.setItem('firebase_token', 'test_token_' + TEST_USER_UID)
-      
-      return // Skip normal auth flow
+    const token = localStorage.getItem('firebase_token')
+    if (token && token.startsWith('test_token_')) {
+      // Remove test token and related data
+      localStorage.removeItem('firebase_token')
+      localStorage.removeItem('auth-user')
+      localStorage.removeItem('auth-is-logged-in')
+      console.log('🧹 Test tokens cleaned up')
     }
-  }, [setUser, setIsLoggedIn])
+  }, [])
   
   // Check for redirect result on mount
   useEffect(() => {
-    // Skip if test bypass is active
-    if (isTestBypassEnabled()) {
-      console.log('🧪 TEST MODE: Skipping redirect check')
-      return
-    }
     
     // Check if we're on Firebase domain (Cursor browser issue)
     if (typeof window !== 'undefined' && window.location.hostname.includes('firebaseapp.com')) {
@@ -194,11 +169,6 @@ export function useAuth() {
 
   // Listen to Firebase auth state changes
   useEffect(() => {
-    // Skip if test bypass is active
-    if (isTestBypassEnabled()) {
-      console.log('🧪 TEST MODE: Skipping Firebase auth state listener')
-      return
-    }
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       try {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -122,10 +122,10 @@ export default function DashboardPage() {
     { label: 'Produtos Listados', value: '24', change: '+3', icon: ShoppingCart },
   ]
 
-  // Backend API URL - use environment variable or fallback, always enforce HTTPS
-  let baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
-  // Force HTTPS even if environment variable is wrong
-  if (baseUrl.startsWith('http://')) {
+  // Backend API URL - use environment variable or fallback to localhost for development
+  let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  // Only force HTTPS in production
+  if (import.meta.env.PROD && baseUrl.startsWith('http://')) {
     console.warn('⚠️ ENV variable has http://, forcing https://')
     baseUrl = baseUrl.replace('http://', 'https://')
   }
@@ -168,17 +168,11 @@ export default function DashboardPage() {
     // Build URL from base and endpoint
     let fullUrl = `${API_BASE_URL}${endpoint}`
     
-    // Safety check: force HTTPS if somehow http slipped through
-    if (fullUrl.startsWith('http://')) {
+    // Safety check: force HTTPS only in production
+    if (import.meta.env.PROD && fullUrl.startsWith('http://')) {
       console.warn('⚠️ URL has http://, forcing https://', fullUrl)
       fullUrl = fullUrl.replace('http://', 'https://')
     }
-    
-    console.group(`🌐 ${method} ${endpoint}`)
-    console.log('Base URL:', API_BASE_URL)
-    console.log('Endpoint:', endpoint)
-    console.log('Full URL:', fullUrl)
-    console.log('Has trailing slash:', endpoint.endsWith('/'))
     
     const resultKey = getResultKey(endpoint, method)
     setApiTestResults(prev => ({ ...prev, [resultKey]: 'pending' }))
@@ -211,26 +205,19 @@ export default function DashboardPage() {
 
       const response = await fetch(fullUrl, options)
       
-      console.log('Response status:', response.status)
-      console.log('Response URL:', response.url) // This shows final URL after redirects
-      
       if (response.ok) {
         const result = await response.json()
         setApiTestResults(prev => ({ ...prev, [resultKey]: 'success' }))
-        console.log('✅ Success:', result)
-        console.groupEnd()
         toast.success(`${endpoint} funcionando!`, {
           description: `Status: ${response.status} - ${method}`
         })
       } else {
         const errorText = await response.text()
         console.error('❌ Error:', response.status, errorText)
-        console.groupEnd()
         throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`)
       }
     } catch (error) {
       console.error('❌ Exception:', error)
-      console.groupEnd()
       setApiTestResults(prev => ({ ...prev, [resultKey]: 'error' }))
       toast.error(`Erro em ${endpoint}`, {
         description: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -744,13 +731,13 @@ export default function DashboardPage() {
           <nav className="p-4">
             <ul className="space-y-2">
               {sidebarItems.map((item, index) => (
-                <>
+                <React.Fragment key={item.id}>
                   {item.id === 'api-test' && (
-                    <li key="separator" className="my-4">
+                    <li className="my-4">
                       <div className="h-px bg-border" />
                     </li>
                   )}
-                  <li key={item.id}>
+                  <li>
                     <button
                       onClick={() => setActiveSection(item.id)}
                       className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
@@ -770,7 +757,7 @@ export default function DashboardPage() {
                       )}
                     </button>
                   </li>
-                </>
+                </React.Fragment>
               ))}
             </ul>
           </nav>
