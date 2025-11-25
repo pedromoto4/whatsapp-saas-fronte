@@ -23,7 +23,6 @@ if (typeof window !== 'undefined') {
   auth.languageCode = 'pt'
   // Configure auth domain for redirect
   const currentOrigin = window.location.origin
-  console.log('Current origin:', currentOrigin)
 }
 
 // Google Auth Provider - Configure to use popup with fallback
@@ -36,7 +35,6 @@ googleProvider.setCustomParameters({
 if (typeof window !== 'undefined') {
   // This ensures redirect goes back to our app
   const redirectUrl = window.location.origin
-  console.log('Redirect URL:', redirectUrl)
 }
 
 // Helper function to try popup first, fallback to redirect

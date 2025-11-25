@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import type { Conversation } from './ConversationsPage'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { getApiBaseUrl } from '@/lib/api-config'
 
 interface ContactInfoProps {
   conversation: Conversation
@@ -40,7 +41,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
     const loadContactInfo = async () => {
       try {
         const token = localStorage.getItem('firebase_token')
-        const response = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/info`, {
+        const response = await fetch(`${getApiBaseUrl()}/api/conversations/${conversation.phone_number}/info`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -73,7 +74,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
       const token = localStorage.getItem('firebase_token')
       if (!token) return
 
-      const response = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/ai-enabled`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/conversations/${conversation.phone_number}/ai-enabled`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -101,7 +102,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
         return
       }
 
-      const response = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/conversations/${conversation.phone_number}/ai-enabled`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/conversations/${conversation.phone_number}/ai-enabled`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -143,7 +144,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
       let contactId: number | null = null
       
       try {
-        const getContactResponse = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/`, {
+        const getContactResponse = await fetch(`${getApiBaseUrl()}/api/contacts/`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -163,7 +164,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
 
       // If contact doesn't exist, create it
       if (!contactId) {
-        const createResponse = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/`, {
+        const createResponse = await fetch(`${getApiBaseUrl()}/api/contacts/`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -189,7 +190,7 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
       }
 
       // Update existing contact
-      const updateResponse = await fetch(`https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/${contactId}`, {
+      const updateResponse = await fetch(`${getApiBaseUrl()}/api/contacts/${contactId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

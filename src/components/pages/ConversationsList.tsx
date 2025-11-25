@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ChatCircle, Robot, MagnifyingGlass, Funnel, X, Archive, Tag, UserPlus } from '@phosphor-icons/react'
 import type { Conversation } from './ConversationsPage'
 import { useState } from 'react'
+import { getApiBaseUrl } from '@/lib/api-config'
 
 interface Contact {
   id: number
@@ -78,7 +79,7 @@ export default function ConversationsList({
     try {
       const token = localStorage.getItem('firebase_token')
       if (token) {
-        const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/', {
+        const response = await fetch(`${getApiBaseUrl()}/api/contacts/`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -132,7 +133,7 @@ export default function ConversationsList({
                 try {
                   const token = localStorage.getItem('firebase_token')
                   if (token) {
-                    const response = await fetch('https://whatsapp-saas-fronte-production.up.railway.app/api/contacts/', {
+                    const response = await fetch(`${getApiBaseUrl()}/api/contacts/`, {
                       method: 'POST',
                       headers: {
                         'Authorization': `Bearer ${token}`,

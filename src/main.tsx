@@ -27,8 +27,6 @@ if (typeof window !== 'undefined') {
         // Don't throw error, just log it
         console.log('Spark runtime could not be loaded:', error.message)
       })
-    } else {
-      console.log('Running in standard web environment (non-Spark)')
     }
   } catch (error) {
     // Catch any errors during environment detection

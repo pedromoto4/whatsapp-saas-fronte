@@ -9,12 +9,17 @@ import { useAuth } from '@/hooks/use-auth'
 import { GoogleLogo } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
+// Development quick login - only in development mode
+const DEV_QUICK_LOGIN_EMAIL = 'pedro.moto4@gmail.com'
+const DEV_QUICK_LOGIN_PASSWORD = 'as4028026' // Hardcoded for development convenience
+
 export default function LoginPage() {
   const { navigate } = useRouter()
   const { loginWithEmail, loginWithGoogle, register, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
+  const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost'
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,6 +42,21 @@ export default function LoginPage() {
       // Navigation will be handled by App.tsx useEffect
     } catch (error) {
       // Error is already handled in the useAuth hook
+    }
+  }
+
+  const handleQuickLogin = async () => {
+    try {
+      await loginWithEmail(DEV_QUICK_LOGIN_EMAIL, DEV_QUICK_LOGIN_PASSWORD)
+      toast.success(`Login rápido realizado como ${DEV_QUICK_LOGIN_EMAIL}`)
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        toast.error('Usuário não encontrado. Crie uma conta primeiro ou use o login normal.')
+      } else if (error.code === 'auth/wrong-password') {
+        toast.error('Senha incorreta. Verifique a senha no código.')
+      } else {
+        toast.error('Erro no login rápido: ' + (error.message || 'Erro desconhecido'))
+      }
     }
   }
 
@@ -108,6 +128,34 @@ export default function LoginPage() {
           <p className="text-xs text-center text-muted-foreground">
             Se o popup for bloqueado, será usado redirect automaticamente
           </p>
+
+          {/* Development Quick Login - Only shown in development */}
+          {isDevelopment && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">
+                    Desenvolvimento
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950"
+                onClick={handleQuickLogin}
+                disabled={loading}
+                type="button"
+              >
+                🚀 Login Rápido: {DEV_QUICK_LOGIN_EMAIL}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                Apenas para desenvolvimento - não aparece em produção
+              </p>
+            </>
+          )}
 
           <div className="text-center text-sm text-muted-foreground">
             {isRegistering ? 'Já tem conta?' : 'Não tem conta?'}{' '}

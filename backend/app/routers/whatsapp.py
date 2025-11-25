@@ -447,14 +447,41 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     """Receive WhatsApp webhook notifications"""
     try:
         data = await request.json()
-        logger.info(f"Received webhook: {data}")
+        logger.info(f"🔔 Webhook recebido: {data}")
         
         # Process webhook data
         processed_data = await whatsapp_service.process_webhook(data)
+        logger.info(f"📦 Dados processados: status={processed_data.get('status')}")
         
         # Handle incoming messages
         if processed_data.get("status") == "success":
             messages = processed_data.get("messages", [])
+            logger.info(f"📨 Mensagens encontradas: {len(messages)}")
+            
+            if not messages:
+                logger.warning("⚠️ Nenhuma mensagem encontrada no webhook")
+                return {"status": "success", "detail": "No messages to process"}
+            
+            # Get default owner_id - try to find first active user, or use env variable
+            from app.crud import get_user_by_id
+            default_owner_id = int(os.getenv("WHATSAPP_DEFAULT_OWNER_ID", "1"))
+            
+            # Verify user exists
+            default_user = await get_user_by_id(db, default_owner_id)
+            if not default_user:
+                # Try to get first active user
+                from sqlalchemy import select
+                from app.models import User
+                result = await db.execute(select(User).where(User.is_active == True).limit(1))
+                first_user = result.scalar_one_or_none()
+                if first_user:
+                    default_owner_id = first_user.id
+                    logger.info(f"✅ Usando primeiro usuário ativo como padrão: {default_owner_id}")
+                else:
+                    logger.error(f"❌ Nenhum usuário ativo encontrado! Não é possível processar mensagens.")
+                    return {"status": "error", "detail": "No active users found"}
+            else:
+                logger.info(f"✅ Usando owner_id configurado: {default_owner_id} ({default_user.email})")
             
             for msg in messages:
                 # Find or create contact
@@ -466,9 +493,10 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     contact_data = {
                         "phone_number": phone_number,
                         "name": phone_number,
-                        "owner_id": 1  # Default owner - should be improved
+                        "owner_id": default_owner_id
                     }
                     contact = await create_contact_from_webhook(db, contact_data)
+                    logger.info(f"Created new contact {phone_number} for owner_id={default_owner_id}")
                 
                 # Handle text messages
                 if msg.get("type") == "text" and msg.get("text"):
@@ -488,6 +516,7 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     await create_message_log(db, log_data)
                     
                     normalized_text = message_text.lower().strip()
+                    logger.info(f"Processing message for owner_id={contact.owner_id}, text='{normalized_text}'")
                     
                     # Check if it's a catalog request
                     catalog_keywords = ["lista", "preços", "precos", "catálogo", "catalogo", "produtos", "menu"]
@@ -497,11 +526,14 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         logger.info(f"Catalog request detected: {message_text}")
                         try:
                             catalog_message = await build_catalog_message(db, contact.owner_id)
-                            await whatsapp_service.send_message(
-                                to=phone_number,
-                                message=catalog_message
-                            )
-                            logger.info(f"Catalog sent to {phone_number}")
+                            if catalog_message:
+                                await whatsapp_service.send_message(
+                                    to=phone_number,
+                                    message=catalog_message
+                                )
+                                logger.info(f"Catalog sent to {phone_number}")
+                            else:
+                                logger.warning(f"No catalog items found for owner_id={contact.owner_id}")
                             
                             # Log outgoing catalog message
                             out_log = MessageLogCreate(
@@ -518,10 +550,12 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             logger.error(f"Failed to send catalog: {e}")
                     else:
                         # Try to match FAQ
+                        logger.info(f"Attempting FAQ match for owner_id={contact.owner_id}")
                         matched_faq = await match_faq_by_keywords(db, contact.owner_id, message_text)
                         logger.info(f"FAQ match result for '{message_text}': {matched_faq is not None}")
                         
                         if matched_faq:
+                            logger.info(f"FAQ matched: {matched_faq.question}")
                             # Send FAQ response
                             try:
                                 logger.info(f"Sending FAQ response: {matched_faq.answer}")
@@ -701,7 +735,9 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         return {"status": "ok"}
         
     except Exception as e:
-        logger.error(f"Webhook processing error: {e}")
+        import traceback
+        logger.error(f"❌ Erro ao processar webhook: {e}")
+        logger.error(f"Traceback completo:\n{traceback.format_exc()}")
         return {"status": "error", "error": str(e)}
 
 @router.get("/contacts/{phone_number}/messages")
