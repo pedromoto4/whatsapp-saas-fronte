@@ -38,3 +38,6 @@ ENVIRONMENT="production".yaml
 *.env.production
 *.env.local
 backend/.env
+backend/.env.bak
+backend/.env.railway
+*.env.bak
