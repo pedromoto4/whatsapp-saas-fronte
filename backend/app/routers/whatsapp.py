@@ -20,6 +20,7 @@ from app.models import User, Contact, Message
 from app.schemas import MessageCreate, MessageResponse, ContactResponse
 from app.whatsapp_service import whatsapp_service
 from app.ai_service import ai_service
+from app.text_utils import normalize_text, detect_intent, match_keywords_in_text
 from app.crud import (
     create_message, 
     get_contact_by_phone, 
@@ -515,12 +516,21 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     )
                     await create_message_log(db, log_data)
                     
-                    normalized_text = message_text.lower().strip()
+                    normalized_text = normalize_text(message_text, remove_accents=True, stem=True)
                     logger.info(f"Processing message for owner_id={contact.owner_id}, text='{normalized_text}'")
                     
-                    # Check if it's a catalog request
-                    catalog_keywords = ["lista", "preços", "precos", "catálogo", "catalogo", "produtos", "menu"]
-                    is_catalog_request = any(keyword in normalized_text for keyword in catalog_keywords)
+                    # Advanced intent detection
+                    detected_intent = detect_intent(message_text)
+                    if detected_intent:
+                        intent_name, confidence = detected_intent
+                        logger.info(f"🎯 Detected intent: {intent_name} (confidence: {confidence:.2f})")
+                    
+                    # Check if it's a catalog request (using improved detection)
+                    catalog_keywords = ["lista", "preço", "preco", "catálogo", "catalogo", "produtos", "menu", "cardapio", "cardápio"]
+                    is_catalog_request = (
+                        match_keywords_in_text(message_text, catalog_keywords, use_partial=True) or
+                        (detected_intent and detected_intent[0] == 'catalog')
+                    )
                     
                     if is_catalog_request:
                         logger.info(f"Catalog request detected: {message_text}")

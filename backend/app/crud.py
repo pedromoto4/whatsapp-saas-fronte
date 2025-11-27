@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 from typing import Optional, List
 from app.models import User, Contact, Campaign, Message, FAQ, Catalog, MessageLog, Template
 from app.schemas import UserCreate, ContactCreate, ContactUpdate, CampaignCreate, CampaignUpdate, MessageCreate, FAQCreate, FAQUpdate, CatalogCreate, CatalogUpdate, MessageLogCreate, TemplateCreate, TemplateUpdate
+from app.text_utils import normalize_text, match_keywords_in_text
 
 # User CRUD
 async def create_user(db: AsyncSession, user: UserCreate) -> User:
@@ -257,7 +258,7 @@ async def delete_faq(db: AsyncSession, faq_id: int, owner_id: int) -> bool:
     return result.rowcount > 0
 
 async def match_faq_by_keywords(db: AsyncSession, owner_id: int, text: str) -> Optional[FAQ]:
-    """Find FAQ by matching keywords in text"""
+    """Find FAQ by matching keywords in text with improved normalization"""
     import logging
     logger = logging.getLogger(__name__)
     
@@ -265,20 +266,22 @@ async def match_faq_by_keywords(db: AsyncSession, owner_id: int, text: str) -> O
         logger.info("No text provided for FAQ matching")
         return None
     
-    # Normalize text (lowercase, remove accents)
-    normalized_text = text.lower().strip()
+    # Normalize text (remove accents, apply stemming)
+    normalized_text = normalize_text(text, remove_accents=True, stem=True)
     logger.info(f"Matching FAQs for owner_id={owner_id}, normalized_text='{normalized_text}'")
     
     # Get all FAQs for user
     faqs = await get_faqs(db, owner_id)
     logger.info(f"Found {len(faqs)} FAQs for owner_id={owner_id}")
     
-    # Simple keyword matching
+    # Improved keyword matching with partial matching
     for faq in faqs:
         if faq.keywords:
-            keywords = [kw.strip().lower() for kw in faq.keywords.split(',')]
+            keywords = [kw.strip() for kw in faq.keywords.split(',')]
             logger.info(f"Checking FAQ '{faq.question}' with keywords: {keywords}")
-            if any(keyword in normalized_text for keyword in keywords):
+            
+            # Use improved matching (removes accents, supports partial matching)
+            if match_keywords_in_text(text, keywords, use_partial=True):
                 logger.info(f"✅ Matched FAQ: '{faq.question}'")
                 return faq
     
