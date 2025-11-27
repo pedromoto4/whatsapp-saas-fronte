@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import FAQManagement from '@/components/pages/FAQManagement'
 import CatalogManagement from '@/components/pages/CatalogManagement'
 import ContactsManagement from '@/components/pages/ContactsManagement'
-import TemplateManagement from '@/components/pages/TemplateManagement'
+// import TemplateManagement from '@/components/pages/TemplateManagement' // Hidden - in stand-by
 import ConversationsPage from '@/components/pages/ConversationsPage'
 import SettingsPage from '@/components/pages/SettingsPage'
 import { 
@@ -27,7 +27,7 @@ import {
   ChatCircleText
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'templates' | 'conversations' | 'settings'
+type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'conversations' | 'settings' // 'templates' removed - in stand-by
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -108,7 +108,7 @@ export default function DashboardPage() {
     { id: 'overview' as const, label: 'Visão Geral', icon: ChartBar },
     { id: 'conversations' as const, label: 'Conversas', icon: ChatCircleText },
     { id: 'contacts' as const, label: 'Contatos', icon: Users },
-    { id: 'templates' as const, label: 'Templates', icon: FileText },
+    // { id: 'templates' as const, label: 'Templates', icon: FileText }, // Hidden - in stand-by
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
     { id: 'settings' as const, label: 'Configurações', icon: Gear },
@@ -371,8 +371,8 @@ export default function DashboardPage() {
       case 'contacts':
         return <ContactsManagement />
       
-      case 'templates':
-        return <TemplateManagement />
+      // case 'templates':
+      //   return <TemplateManagement /> // Hidden - in stand-by
       
       case 'conversations':
         return <ConversationsPage />
@@ -680,29 +680,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
-          </div>
-        )
-      
-      case 'catalog':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Product Catalog</h2>
-              <p className="text-muted-foreground">
-                Manage your products and showcase them to customers.
-              </p>
-            </div>
-            <Card>
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <ShoppingCart size={48} className="text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Catalog Management Coming Soon</h3>
-                  <p className="text-muted-foreground">
-                    Advanced product management tools are in development.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )
     }
