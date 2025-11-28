@@ -94,13 +94,29 @@ export default function DashboardPage() {
       }
     }
     
+    // Listen for select-conversation event (from ContactsManagement)
+    const handleSelectConversation = (event: CustomEvent) => {
+      const { phoneNumber } = event.detail
+      if (phoneNumber) {
+        setActiveSection('conversations')
+        // Forward event to ConversationsPage
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('select-conversation', { 
+            detail: { phoneNumber } 
+          }))
+        }, 100)
+      }
+    }
+    
     window.addEventListener('conversation-read', handleConversationRead)
     window.addEventListener('unread-count-changed', handleUnreadCountChanged as EventListener)
+    window.addEventListener('select-conversation', handleSelectConversation as EventListener)
     
     return () => {
       clearInterval(interval)
       window.removeEventListener('conversation-read', handleConversationRead)
       window.removeEventListener('unread-count-changed', handleUnreadCountChanged as EventListener)
+      window.removeEventListener('select-conversation', handleSelectConversation as EventListener)
     }
   }, [])
 

@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, User, Phone, ChatCircle, MagnifyingGlass } from '@phosphor-icons/react'
+import { Plus, User, Phone, ChatCircle, MagnifyingGlass, Pencil } from '@phosphor-icons/react'
+import { getApiBaseUrl } from '@/lib/api-config'
 
 interface Contact {
   id: number
@@ -22,6 +23,7 @@ export default function ContactsManagement() {
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState<Contact | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState({
     name: '',
@@ -30,7 +32,7 @@ export default function ContactsManagement() {
     notes: ''
   })
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://whatsapp-saas-fronte-production.up.railway.app'
+  const API_BASE_URL = getApiBaseUrl()
 
   const getAuthToken = async () => {
     const token = localStorage.getItem('firebase_token')
@@ -43,6 +45,17 @@ export default function ContactsManagement() {
 
   useEffect(() => {
     loadContacts()
+    
+    // Listen for contact updates from other components (e.g., ContactInfo)
+    const handleContactUpdate = () => {
+      loadContacts()
+    }
+    
+    window.addEventListener('contact-updated', handleContactUpdate)
+    
+    return () => {
+      window.removeEventListener('contact-updated', handleContactUpdate)
+    }
   }, [])
 
   useEffect(() => {
@@ -87,8 +100,8 @@ export default function ContactsManagement() {
   }
 
   const saveContact = async () => {
-    // Validate phone number format
-    if (!formData.phone_number.startsWith('+')) {
+    // Validate phone number format (only for new contacts, editing keeps original)
+    if (!editingContact && !formData.phone_number.startsWith('+')) {
       toast.error('O telefone deve começar com + e código do país (ex: +351912345678)')
       return
     }
@@ -102,8 +115,14 @@ export default function ContactsManagement() {
       const token = await getAuthToken()
       if (!token) return
 
-      const response = await fetch(`${API_BASE_URL}/api/contacts/`, {
-        method: 'POST',
+      const url = editingContact
+        ? `${API_BASE_URL}/api/contacts/${editingContact.id}`
+        : `${API_BASE_URL}/api/contacts/`
+
+      const method = editingContact ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -117,13 +136,16 @@ export default function ContactsManagement() {
       })
 
       if (response.ok) {
-        toast.success('Contato criado com sucesso!')
+        toast.success(editingContact ? 'Contato atualizado com sucesso!' : 'Contato criado com sucesso!')
         setIsDialogOpen(false)
         resetForm()
         loadContacts()
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('contact-updated'))
       } else {
         const error = await response.json()
-        toast.error(error.detail || 'Erro ao criar contato')
+        toast.error(error.detail || (editingContact ? 'Erro ao atualizar contato' : 'Erro ao criar contato'))
       }
     } catch (error) {
       toast.error('Erro de conexão')
@@ -158,11 +180,31 @@ export default function ContactsManagement() {
 
   const resetForm = () => {
     setFormData({ name: '', phone_number: '', tags: '', notes: '' })
+    setEditingContact(null)
   }
 
   const openCreateDialog = () => {
     resetForm()
     setIsDialogOpen(true)
+  }
+
+  const openEditDialog = (contact: Contact) => {
+    setEditingContact(contact)
+    setFormData({
+      name: contact.name,
+      phone_number: contact.phone_number,
+      tags: contact.tags || '',
+      notes: contact.notes || ''
+    })
+    setIsDialogOpen(true)
+  }
+
+  const handleSendMessage = (phoneNumber: string) => {
+    // Dispatch event to DashboardPage to switch to conversations and select contact
+    window.dispatchEvent(new CustomEvent('select-conversation', { 
+      detail: { phoneNumber } 
+    }))
+    toast.info('Navegando para conversas...')
   }
 
   const formatDate = (dateString: string) => {
@@ -189,7 +231,12 @@ export default function ContactsManagement() {
             {filteredContacts.length} {filteredContacts.length === 1 ? 'contato' : 'contatos'}
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open)
+          if (!open) {
+            resetForm()
+          }
+        }}>
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog}>
               <Plus size={20} className="mr-2" /> Novo Contato
@@ -197,9 +244,11 @@ export default function ContactsManagement() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Adicionar Novo Contato</DialogTitle>
+              <DialogTitle>
+                {editingContact ? 'Editar Contato' : 'Adicionar Novo Contato'}
+              </DialogTitle>
               <DialogDescription>
-                Adicione um novo contato à sua lista
+                {editingContact ? 'Atualize as informações do contato' : 'Adicione um novo contato à sua lista'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -217,9 +266,10 @@ export default function ContactsManagement() {
                   placeholder="Ex: +351912345678"
                   value={formData.phone_number}
                   onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                  disabled={!!editingContact}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Formato: +[código país][número] (ex: +351912345678)
+                  {editingContact ? 'O telefone não pode ser alterado' : 'Formato: +[código país][número] (ex: +351912345678)'}
                 </p>
               </div>
               <div>
@@ -239,7 +289,7 @@ export default function ContactsManagement() {
                 />
               </div>
               <Button onClick={saveContact} className="w-full">
-                Criar Contato
+                {editingContact ? 'Atualizar Contato' : 'Criar Contato'}
               </Button>
             </div>
           </DialogContent>
@@ -328,13 +378,18 @@ export default function ContactsManagement() {
                     variant="default" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => {
-                      // Navigate to WhatsApp section with pre-filled phone
-                      toast.info('Funcionalidade de envio rápido em breve!')
-                    }}
+                    onClick={() => handleSendMessage(contact.phone_number)}
                   >
                     <ChatCircle size={16} className="mr-1" />
                     Enviar Mensagem
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => openEditDialog(contact)}
+                  >
+                    <Pencil size={16} className="mr-1" />
+                    Editar
                   </Button>
                   <Button 
                     variant="outline" 

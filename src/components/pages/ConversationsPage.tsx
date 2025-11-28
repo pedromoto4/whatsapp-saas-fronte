@@ -210,6 +210,20 @@ export default function ConversationsPage() {
         previousUnreadCountRef.current = totalUnread
       }
     })
+    
+    // Listen for select-conversation event (from ContactsManagement or DashboardPage)
+    const handleSelectConversation = (event: CustomEvent) => {
+      const { phoneNumber } = event.detail
+      if (phoneNumber) {
+        handleConversationSelect(phoneNumber)
+      }
+    }
+    
+    window.addEventListener('select-conversation', handleSelectConversation as EventListener)
+    
+    return () => {
+      window.removeEventListener('select-conversation', handleSelectConversation as EventListener)
+    }
   }, [])
 
   // Auto-refresh only messages of active conversation every 5 seconds (silent mode)

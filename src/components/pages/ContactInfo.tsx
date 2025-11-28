@@ -181,6 +181,8 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
         if (createResponse.ok) {
           toast.success('Contacto criado com sucesso!')
           setIsEditing(false)
+          // Dispatch event to notify ContactsManagement
+          window.dispatchEvent(new CustomEvent('contact-updated'))
           return
         } else {
           const error = await createResponse.json()
@@ -208,6 +210,8 @@ export default function ContactInfo({ conversation, messageCount, onClose }: Con
         setIsEditing(false)
         // Update local state
         setContactData(prev => prev ? { ...prev, database_name: name } : null)
+        // Dispatch event to notify ContactsManagement
+        window.dispatchEvent(new CustomEvent('contact-updated'))
       } else {
         const error = await updateResponse.json()
         toast.error(error.detail || 'Erro ao atualizar contacto')
