@@ -525,49 +525,76 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         intent_name, confidence = detected_intent
                         logger.info(f"🎯 Detected intent: {intent_name} (confidence: {confidence:.2f})")
                     
-                    # Check if it's an appointment request
+                    # Check if it's an appointment-related request
                     appointment_intent = await ai_service.detect_appointment_intent(message_text)
                     if appointment_intent:
-                        logger.info(f"📅 Appointment intent detected: {appointment_intent}")
+                        intent_type = appointment_intent.get("intent_type", "schedule")
+                        logger.info(f"📅 Appointment intent detected: {intent_type} (confidence: {appointment_intent.get('confidence', 0):.2f})")
                         try:
-                            # Process appointment request
-                            appointment_result = await ai_service.process_appointment_request(
-                                message=message_text,
-                                owner_id=contact.owner_id,
-                                contact_id=contact.id,
-                                db=db
-                            )
+                            # Process based on intent type
+                            appointment_result = None
                             
-                            # Send response
-                            await whatsapp_service.send_message(
-                                to=phone_number,
-                                message=appointment_result["response"]
-                            )
+                            if intent_type == "schedule":
+                                appointment_result = await ai_service.process_appointment_request(
+                                    message=message_text,
+                                    owner_id=contact.owner_id,
+                                    contact_id=contact.id,
+                                    db=db
+                                )
+                            elif intent_type == "modify":
+                                appointment_result = await ai_service.process_modify_appointment_request(
+                                    message=message_text,
+                                    owner_id=contact.owner_id,
+                                    contact_id=contact.id,
+                                    db=db
+                                )
+                            elif intent_type == "cancel":
+                                appointment_result = await ai_service.process_cancel_appointment_request(
+                                    message=message_text,
+                                    owner_id=contact.owner_id,
+                                    contact_id=contact.id,
+                                    db=db
+                                )
+                            elif intent_type == "suggest":
+                                appointment_result = await ai_service.process_suggest_appointment_request(
+                                    message=message_text,
+                                    owner_id=contact.owner_id,
+                                    contact_id=contact.id,
+                                    db=db
+                                )
                             
-                            # Log appointment response
-                            out_log = MessageLogCreate(
-                                owner_id=contact.owner_id,
-                                direction="out",
-                                kind="text",
-                                to_from=phone_number,
-                                content=appointment_result["response"],
-                                cost_estimate="0.015",
-                                is_automated=True
-                            )
-                            await create_message_log(db, out_log)
-                            logger.info(f"Appointment response sent to {phone_number}")
-                            
-                            # Continue to save message (don't process FAQ/catalog)
-                            message_data = {
-                                "contact_id": contact.id,
-                                "content": msg["text"],
-                                "status": "received"
-                            }
-                            await create_message(db, message_data)
-                            continue  # Skip FAQ/catalog processing
+                            if appointment_result:
+                                # Send response
+                                await whatsapp_service.send_message(
+                                    to=phone_number,
+                                    message=appointment_result["response"]
+                                )
+                                
+                                # Log appointment response
+                                out_log = MessageLogCreate(
+                                    owner_id=contact.owner_id,
+                                    direction="out",
+                                    kind="text",
+                                    to_from=phone_number,
+                                    content=appointment_result["response"],
+                                    cost_estimate="0.015",
+                                    is_automated=True
+                                )
+                                await create_message_log(db, out_log)
+                                logger.info(f"Appointment response ({intent_type}) sent to {phone_number}")
+                                
+                                # Continue to save message (don't process FAQ/catalog)
+                                message_data = {
+                                    "contact_id": contact.id,
+                                    "content": msg["text"],
+                                    "status": "received"
+                                }
+                                await create_message(db, message_data)
+                                continue  # Skip FAQ/catalog processing
                             
                         except Exception as e:
-                            logger.error(f"Failed to process appointment request: {e}")
+                            intent_type_str = appointment_intent.get("intent_type", "unknown") if appointment_intent else "unknown"
+                            logger.error(f"Failed to process appointment request ({intent_type_str}): {e}", exc_info=True)
                             # Fall through to normal processing
                     
                     # Check if it's a catalog request (using improved detection)

@@ -273,6 +273,30 @@ async def get_appointments(
     result = await db.execute(query)
     return result.scalars().all()
 
+async def get_appointments_by_contact(
+    db: AsyncSession,
+    contact_id: int,
+    owner_id: int,
+    status: Optional[str] = None
+) -> List[Appointment]:
+    """Get appointments for a specific contact"""
+    query = select(Appointment).where(
+        and_(
+            Appointment.contact_id == contact_id,
+            Appointment.owner_id == owner_id
+        )
+    )
+    
+    if status:
+        query = query.where(Appointment.status == status)
+    else:
+        # By default, exclude cancelled appointments
+        query = query.where(Appointment.status != "cancelled")
+    
+    query = query.order_by(Appointment.scheduled_at.desc())
+    result = await db.execute(query)
+    return result.scalars().all()
+
 async def get_appointment(
     db: AsyncSession,
     appointment_id: int,
