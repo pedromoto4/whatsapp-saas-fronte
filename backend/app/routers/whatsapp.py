@@ -562,6 +562,13 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                     contact_id=contact.id,
                                     db=db
                                 )
+                            elif intent_type == "list":
+                                appointment_result = await ai_service.process_list_appointments_request(
+                                    message=message_text,
+                                    owner_id=contact.owner_id,
+                                    contact_id=contact.id,
+                                    db=db
+                                )
                             
                             if appointment_result:
                                 # Send response

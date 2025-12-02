@@ -121,7 +121,7 @@ Mensagem: "{message}"
 
 Responda APENAS com JSON no formato:
 {{
-    "intent_type": "schedule|modify|cancel|suggest|none",
+    "intent_type": "schedule|modify|cancel|suggest|list|none",
     "confidence": 0.0-1.0
 }}
 
@@ -130,13 +130,17 @@ Tipos de intenção:
 - "modify": Cliente quer alterar/mudar um agendamento existente
 - "cancel": Cliente quer cancelar um agendamento
 - "suggest": Cliente pede sugestões de horários disponíveis
+- "list": Cliente quer consultar/ver seus agendamentos
 - "none": Não é relacionado a agendamentos
 
 Exemplos:
 - "Quero agendar para amanhã" -> schedule
 - "Quero mudar meu agendamento" -> modify
 - "Quero cancelar" -> cancel
-- "Quais horários vocês têm disponíveis?" -> suggest"""
+- "Quais horários vocês têm disponíveis?" -> suggest
+- "Quais são os meus agendamentos?" -> list
+- "Quero ver meus agendamentos" -> list
+- "Tenho algum agendamento?" -> list"""
 
             response = await self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -659,6 +663,104 @@ Se não conseguir extrair uma informação, use null."""
             logger.error(f"Error processing suggest appointment request: {e}")
             return {
                 "response": "Ocorreu um erro ao buscar horários disponíveis. Por favor, tente novamente.",
+                "appointment": None
+            }
+    
+    async def process_list_appointments_request(
+        self,
+        message: str,
+        owner_id: int,
+        contact_id: int,
+        db
+    ) -> Dict:
+        """
+        Process a request to list user's appointments
+        
+        Args:
+            message: The list request message
+            owner_id: The business owner ID
+            contact_id: The contact ID
+            db: Database session
+        
+        Returns:
+            Dict with response message containing list of appointments
+        """
+        from app.crud_appointments import get_appointments_by_contact
+        
+        try:
+            # Get all active appointments for this contact
+            appointments = await get_appointments_by_contact(db, contact_id, owner_id, include_cancelled=False)
+            
+            # Also get recent cancelled appointments (for reference)
+            cancelled_appointments = await get_appointments_by_contact(db, contact_id, owner_id, status="cancelled")
+            # Only show cancelled from the last 7 days
+            week_ago = datetime.now() - timedelta(days=7)
+            recent_cancelled = [a for a in cancelled_appointments if a.scheduled_at >= week_ago]
+            
+            if not appointments and not recent_cancelled:
+                return {
+                    "response": "Você não possui agendamentos ativos no momento.\n\nPara agendar, envie uma mensagem como: 'Quero agendar para amanhã às 14h'",
+                    "appointment": None
+                }
+            
+            response = "📅 Seus agendamentos:\n\n"
+            
+            # Active appointments
+            if appointments:
+                response += "✅ Agendamentos ativos:\n"
+                for i, apt in enumerate(appointments, 1):
+                    date_str = apt.scheduled_at.strftime("%d/%m/%Y")
+                    time_str = apt.scheduled_at.strftime("%H:%M")
+                    
+                    status_emoji = {
+                        "pending": "⏳",
+                        "confirmed": "✅",
+                        "completed": "✓"
+                    }.get(apt.status, "📅")
+                    
+                    status_text = {
+                        "pending": "Pendente",
+                        "confirmed": "Confirmado",
+                        "completed": "Concluído"
+                    }.get(apt.status, apt.status)
+                    
+                    response += f"{status_emoji} {i}. {date_str} às {time_str} ({status_text})"
+                    
+                    # Get service type name if available
+                    if apt.service_type_id:
+                        from app.crud_appointments import get_service_type
+                        service_type = await get_service_type(db, apt.service_type_id, owner_id)
+                        if service_type:
+                            response += f" - {service_type.name}"
+                    
+                    if apt.notes:
+                        response += f"\n   Nota: {apt.notes}"
+                    
+                    response += "\n"
+            
+            # Recent cancelled appointments
+            if recent_cancelled:
+                response += "\n❌ Agendamentos cancelados recentemente:\n"
+                for apt in recent_cancelled[:3]:  # Show max 3 cancelled
+                    date_str = apt.scheduled_at.strftime("%d/%m/%Y")
+                    time_str = apt.scheduled_at.strftime("%H:%M")
+                    response += f"❌ {date_str} às {time_str} (Cancelado)\n"
+            
+            response += "\n💡 Dicas:\n"
+            response += "• Para alterar: 'Quero mudar meu agendamento para [nova data/hora]'\n"
+            response += "• Para cancelar: 'Quero cancelar meu agendamento'\n"
+            response += "• Para ver horários disponíveis: 'Quais horários vocês têm?'"
+            
+            return {
+                "response": response,
+                "appointment": None,
+                "appointments": [{"id": a.id, "scheduled_at": a.scheduled_at.isoformat(), "status": a.status} for a in appointments]
+            }
+        
+        except Exception as e:
+            logger.error(f"Error processing list appointments request: {e}")
+            return {
+                "response": "Ocorreu um erro ao buscar seus agendamentos. Por favor, tente novamente.",
                 "appointment": None
             }
 

@@ -277,9 +277,19 @@ async def get_appointments_by_contact(
     db: AsyncSession,
     contact_id: int,
     owner_id: int,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    include_cancelled: bool = False
 ) -> List[Appointment]:
-    """Get appointments for a specific contact"""
+    """
+    Get appointments for a specific contact
+    
+    Args:
+        db: Database session
+        contact_id: Contact ID
+        owner_id: Owner ID
+        status: Optional status filter (if None, returns active appointments by default)
+        include_cancelled: If True, includes cancelled appointments when status is None
+    """
     query = select(Appointment).where(
         and_(
             Appointment.contact_id == contact_id,
@@ -289,7 +299,7 @@ async def get_appointments_by_contact(
     
     if status:
         query = query.where(Appointment.status == status)
-    else:
+    elif not include_cancelled:
         # By default, exclude cancelled appointments
         query = query.where(Appointment.status != "cancelled")
     
