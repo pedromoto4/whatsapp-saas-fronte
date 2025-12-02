@@ -307,7 +307,7 @@ async def update_appointment_endpoint(
             if service_type:
                 duration_minutes = service_type.duration_minutes
         
-        if not await check_availability(db, current_user.id, appointment_update.scheduled_at, duration_minutes):
+        if not await check_availability(db, current_user.id, appointment_update.scheduled_at, duration_minutes, exclude_appointment_id=appointment_id):
             raise HTTPException(
                 status_code=400,
                 detail="The requested time slot is not available"

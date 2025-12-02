@@ -373,102 +373,142 @@ async def get_available_slots(
     Get available time slots for a specific date.
     Returns a list of datetime objects representing available slots.
     """
-    # Get the date part (without time)
-    target_date_only = target_date.date()
-    day_of_week = target_date_only.weekday()  # 0=Monday, 6=Sunday
-    
-    # Get recurring availability for this day of week
-    recurring = await db.execute(
-        select(RecurringAvailability).where(
-            and_(
-                RecurringAvailability.owner_id == owner_id,
-                RecurringAvailability.day_of_week == day_of_week,
-                RecurringAvailability.is_active == True
-            )
-        )
-    )
-    recurring_list = recurring.scalars().all()
-    
-    # Check for exceptions for this specific date
-    exception = await db.execute(
-        select(AvailabilityException).where(
-            and_(
-                AvailabilityException.owner_id == owner_id,
-                func.date(AvailabilityException.date) == target_date_only
-            )
-        )
-    )
-    exception_obj = exception.scalar_one_or_none()
-    
-    # If day is blocked, return empty list
-    if exception_obj and exception_obj.is_blocked:
-        return []
-    
-    # If custom slots are defined, use those
-    if exception_obj and exception_obj.custom_slots:
-        try:
-            custom_slots_data = json.loads(exception_obj.custom_slots)
-            slots = []
-            for slot_time_str in custom_slots_data.get('times', []):
-                slot_time = datetime.strptime(slot_time_str, "%H:%M").time()
-                slot_datetime = datetime.combine(target_date_only, slot_time)
-                if slot_datetime >= datetime.now():
-                    slots.append(slot_datetime)
-            return sorted(slots)
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Error parsing custom slots: {e}")
-    
-    # Generate slots from recurring availability
-    slots = []
-    for rec in recurring_list:
-        # Get service duration (default to slot_duration_minutes)
-        duration_minutes = rec.slot_duration_minutes
-        if service_type_id:
-            service_type = await get_service_type(db, service_type_id, owner_id)
-            if service_type:
-                duration_minutes = service_type.duration_minutes
+    try:
+        # Get the date part (without time)
+        # Handle both timezone-aware and naive datetimes
+        if hasattr(target_date, 'date'):
+            target_date_only = target_date.date()
+        else:
+            # If it's a string, try to parse
+            if isinstance(target_date, str):
+                target_date = datetime.fromisoformat(target_date)
+            target_date_only = target_date.date()
         
-        # Generate slots for this recurring availability
-        current_time = rec.start_time
-        while current_time < rec.end_time:
-            slot_datetime = datetime.combine(target_date_only, current_time)
+        day_of_week = target_date_only.weekday()  # 0=Monday, 6=Sunday
+        
+        # Get recurring availability for this day of week
+            select(RecurringAvailability).where(
+                and_(
+                    RecurringAvailability.owner_id == owner_id,
+                    RecurringAvailability.day_of_week == day_of_week,
+                    RecurringAvailability.is_active == True
+                )
+            )
+        )
+        recurring_list = recurring.scalars().all()
+        
+        # Check for exceptions for this specific date
+        exception = await db.execute(
+            select(AvailabilityException).where(
+                and_(
+                    AvailabilityException.owner_id == owner_id,
+                    func.date(AvailabilityException.date) == target_date_only
+                )
+            )
+        )
+        exception_obj = exception.scalar_one_or_none()
+        
+        # If day is blocked, return empty list
+        if exception_obj and exception_obj.is_blocked:
+            return []
+        
+        # If custom slots are defined, use those
+        if exception_obj and exception_obj.custom_slots:
+            try:
+                custom_slots_data = json.loads(exception_obj.custom_slots)
+                slots = []
+                from datetime import timezone
+                now = datetime.now(timezone.utc)
+                for slot_time_str in custom_slots_data.get('times', []):
+                    slot_time = datetime.strptime(slot_time_str, "%H:%M").time()
+                    slot_datetime = datetime.combine(target_date_only, slot_time)
+                    # Make timezone-aware
+                    if slot_datetime.tzinfo is None:
+                        slot_datetime = slot_datetime.replace(tzinfo=timezone.utc)
+                    if slot_datetime >= now:
+                        slots.append(slot_datetime)
+                return sorted(slots)
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.error(f"Error parsing custom slots: {e}")
+        
+        # Generate slots from recurring availability
+        slots = []
+        if not recurring_list:
+            # No recurring availability configured for this day
+            logger.info(f"No recurring availability configured for day {day_of_week} (owner_id={owner_id})")
+            return []
+        
+        for rec in recurring_list:
+            # Get service duration (default to slot_duration_minutes)
+            duration_minutes = rec.slot_duration_minutes
+            if service_type_id:
+                service_type = await get_service_type(db, service_type_id, owner_id)
+                if service_type:
+                    duration_minutes = service_type.duration_minutes
             
-            # Only include future slots
-            if slot_datetime >= datetime.now():
-                # Check if this slot conflicts with existing appointments
-                if await check_availability(db, owner_id, slot_datetime, duration_minutes):
-                    slots.append(slot_datetime)
-            
-            # Move to next slot
-            current_time = (datetime.combine(date.today(), current_time) + timedelta(minutes=duration_minutes)).time()
-    
-    return sorted(slots)
+            # Generate slots for this recurring availability
+            from datetime import timezone
+            now = datetime.now(timezone.utc)
+            current_time = rec.start_time
+            while current_time < rec.end_time:
+                slot_datetime = datetime.combine(target_date_only, current_time)
+                # Make timezone-aware
+                if slot_datetime.tzinfo is None:
+                    slot_datetime = slot_datetime.replace(tzinfo=timezone.utc)
+                
+                # Only include future slots
+                if slot_datetime >= now:
+                    # Check if this slot conflicts with existing appointments
+                    if await check_availability(db, owner_id, slot_datetime, duration_minutes):
+                        slots.append(slot_datetime)
+                
+                # Move to next slot
+                current_time = (datetime.combine(date.today(), current_time) + timedelta(minutes=duration_minutes)).time()
+        
+        return sorted(slots)
+    except Exception as e:
+        logger.error(f"Error in get_available_slots: {e}", exc_info=True)
+        return []  # Return empty list on error
 
 async def check_availability(
     db: AsyncSession,
     owner_id: int,
     slot_datetime: datetime,
-    duration_minutes: int
+    duration_minutes: int,
+    exclude_appointment_id: Optional[int] = None
 ) -> bool:
     """
     Check if a specific time slot is available.
     Returns True if available, False if not.
+    
+    Args:
+        db: Database session
+        owner_id: Owner ID
+        slot_datetime: The datetime to check
+        duration_minutes: Duration of the slot in minutes
+        exclude_appointment_id: Optional appointment ID to exclude from conflict check (useful when modifying)
     """
     # Check if slot is in the past
-    if slot_datetime < datetime.now():
+    # Make sure both datetimes are timezone-aware for comparison
+    now = datetime.now(slot_datetime.tzinfo) if slot_datetime.tzinfo else datetime.now()
+    if slot_datetime < now:
         return False
     
     # Check for conflicting appointments
     # Get all active appointments for this owner
-    appointments = await db.execute(
-        select(Appointment).where(
-            and_(
-                Appointment.owner_id == owner_id,
-                Appointment.status.in_(["pending", "confirmed"]),
-                func.date(Appointment.scheduled_at) == slot_datetime.date()
-            )
+    query = select(Appointment).where(
+        and_(
+            Appointment.owner_id == owner_id,
+            Appointment.status.in_(["pending", "confirmed"]),
+            func.date(Appointment.scheduled_at) == slot_datetime.date()
         )
     )
+    
+    # Exclude the appointment being modified if provided
+    if exclude_appointment_id:
+        query = query.where(Appointment.id != exclude_appointment_id)
+    
+    appointments = await db.execute(query)
     appointments_list = appointments.scalars().all()
     
     end_datetime = slot_datetime + timedelta(minutes=duration_minutes)
@@ -484,7 +524,25 @@ async def check_availability(
         appointment_end = appointment.scheduled_at + timedelta(minutes=appointment_duration)
         
         # Check for overlap
-        if (appointment.scheduled_at < end_datetime and appointment_end > slot_datetime):
+        # Ensure timezone compatibility - convert to UTC if needed
+        slot_dt = slot_datetime
+        end_dt = end_datetime
+        apt_start = appointment.scheduled_at
+        apt_end = appointment_end
+        
+        # Normalize to UTC for comparison if timezones differ
+        from datetime import timezone
+        if slot_dt.tzinfo is None:
+            slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+        if end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=timezone.utc)
+        if apt_start.tzinfo is None:
+            apt_start = apt_start.replace(tzinfo=timezone.utc)
+        if apt_end.tzinfo is None:
+            apt_end = apt_end.replace(tzinfo=timezone.utc)
+        
+        # Check for overlap
+        if (apt_start < end_dt and apt_end > slot_dt):
             return False
     
     # Check if slot is within recurring availability

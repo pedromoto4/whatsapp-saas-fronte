@@ -282,7 +282,11 @@ Se não conseguir extrair uma informação, use null."""
             if "T" in date_str:
                 scheduled_at = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             else:
-                scheduled_at = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                # Create naive datetime first
+                naive_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                # Make it timezone-aware (use UTC)
+                from datetime import timezone
+                scheduled_at = naive_datetime.replace(tzinfo=timezone.utc)
             
             # Get service type if mentioned
             service_type_id = None
@@ -297,8 +301,8 @@ Se não conseguir extrair uma informação, use null."""
                         duration_minutes = st.duration_minutes
                         break
             
-            # Check availability
-            is_available = await check_availability(db, owner_id, scheduled_at, duration_minutes)
+            # Check availability (no exclusion needed for new appointments)
+            is_available = await check_availability(db, owner_id, scheduled_at, duration_minutes, exclude_appointment_id=None)
             
             if is_available:
                 # Create appointment
@@ -438,7 +442,12 @@ Se não conseguir extrair uma informação, use null."""
             if "T" in date_str:
                 new_scheduled_at = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             else:
-                new_scheduled_at = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                # Create naive datetime first
+                naive_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                # Make it timezone-aware (use UTC or local timezone)
+                from datetime import timezone
+                # Assume local timezone if not specified
+                new_scheduled_at = naive_datetime.replace(tzinfo=timezone.utc)
             
             # Get service duration
             duration_minutes = 30  # default
@@ -447,8 +456,8 @@ Se não conseguir extrair uma informação, use null."""
                 if service_type:
                     duration_minutes = service_type.duration_minutes
             
-            # Check if new time is available
-            if not await check_availability(db, owner_id, new_scheduled_at, duration_minutes):
+            # Check if new time is available (exclude the appointment being modified)
+            if not await check_availability(db, owner_id, new_scheduled_at, duration_minutes, exclude_appointment_id=appointment_to_modify.id):
                 return {
                     "response": f"❌ O horário solicitado ({new_scheduled_at.strftime('%d/%m/%Y às %H:%M')}) não está disponível. Por favor, sugira outro horário.",
                     "appointment": None
@@ -456,14 +465,26 @@ Se não conseguir extrair uma informação, use null."""
             
             # Update appointment
             from app.schemas import AppointmentUpdate
-            update_data = AppointmentUpdate(
-                scheduled_at=new_scheduled_at,
-                notes=details.get("notes") or appointment_to_modify.notes
-            )
             
-            updated_appointment = await update_appointment(
-                db, appointment_to_modify.id, owner_id, update_data
-            )
+            # Prepare update data - only include notes if provided, otherwise keep existing
+            update_dict = {"scheduled_at": new_scheduled_at}
+            if details.get("notes"):
+                update_dict["notes"] = details["notes"]
+            # If notes not provided, don't include it (will keep existing notes)
+            
+            update_data = AppointmentUpdate(**update_dict)
+            
+            logger.info(f"Updating appointment {appointment_to_modify.id} with new scheduled_at: {new_scheduled_at}")
+            logger.info(f"Update data: {update_data.dict(exclude_unset=True)}")
+            
+            try:
+                updated_appointment = await update_appointment(
+                    db, appointment_to_modify.id, owner_id, update_data
+                )
+                logger.info(f"Appointment updated successfully: {updated_appointment.id if updated_appointment else 'None'}")
+            except Exception as update_error:
+                logger.error(f"Error in update_appointment call: {update_error}", exc_info=True)
+                raise
             
             if updated_appointment:
                 date_formatted = new_scheduled_at.strftime("%d/%m/%Y")
@@ -485,15 +506,17 @@ Se não conseguir extrair uma informação, use null."""
                 }
         
         except ValueError as e:
-            logger.error(f"Error parsing date/time in modify request: {e}")
+            logger.error(f"Error parsing date/time in modify request: {e}", exc_info=True)
             return {
                 "response": "Não consegui entender a nova data/hora. Por favor, tente novamente com uma data específica, por exemplo: 'Quero mudar para 25/01/2024 às 14h'",
                 "appointment": None
             }
         except Exception as e:
-            logger.error(f"Error processing modify appointment request: {e}")
+            logger.error(f"Error processing modify appointment request: {e}", exc_info=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {
-                "response": "Ocorreu um erro ao alterar o agendamento. Por favor, tente novamente.",
+                "response": f"Ocorreu um erro ao alterar o agendamento: {str(e)}. Por favor, tente novamente.",
                 "appointment": None
             }
     
@@ -595,6 +618,7 @@ Se não conseguir extrair uma informação, use null."""
             details = await self.extract_appointment_details(message)
             
             # Determine target date
+            from datetime import timezone
             if details.get("date"):
                 date_str = details["date"]
                 if "T" in date_str:
@@ -602,12 +626,13 @@ Se não conseguir extrair uma informação, use null."""
                 else:
                     # Try to parse just the date
                     try:
-                        target_date = datetime.strptime(date_str, "%Y-%m-%d")
+                        naive_date = datetime.strptime(date_str, "%Y-%m-%d")
+                        target_date = naive_date.replace(tzinfo=timezone.utc)
                     except:
-                        target_date = datetime.now() + timedelta(days=1)
+                        target_date = datetime.now(timezone.utc) + timedelta(days=1)
             else:
                 # Default to tomorrow
-                target_date = datetime.now() + timedelta(days=1)
+                target_date = datetime.now(timezone.utc) + timedelta(days=1)
             
             # Get service type if mentioned
             service_type_id = None
@@ -621,48 +646,75 @@ Se não conseguir extrair uma informação, use null."""
             # Get available slots for the next 7 days
             suggestions = []
             for i in range(7):
-                check_date = target_date.date() + timedelta(days=i)
-                check_datetime = datetime.combine(check_date, datetime.now().time())
-                slots = await get_available_slots(db, owner_id, check_datetime, service_type_id)
-                
-                # Take first 5 slots from each day
-                for slot in slots[:5]:
-                    suggestions.append(slot)
+                try:
+                    check_date = target_date.date() + timedelta(days=i)
+                    # Use a time with timezone for the check
+                    check_time = datetime.now(timezone.utc).time()
+                    check_datetime = datetime.combine(check_date, check_time)
+                    # Make it timezone-aware
+                    if check_datetime.tzinfo is None:
+                        check_datetime = check_datetime.replace(tzinfo=timezone.utc)
+                    
+                    slots = await get_available_slots(db, owner_id, check_datetime, service_type_id)
+                    
+                    # Take first 5 slots from each day
+                    for slot in slots[:5]:
+                        suggestions.append(slot)
+                        if len(suggestions) >= 10:
+                            break
+                    
                     if len(suggestions) >= 10:
                         break
-                
-                if len(suggestions) >= 10:
-                    break
+                except Exception as day_error:
+                    logger.error(f"Error getting slots for day {i}: {day_error}")
+                    continue
             
             if suggestions:
                 response = "📅 Horários disponíveis:\n\n"
                 current_date = None
                 for slot in suggestions[:10]:
-                    slot_date = slot.strftime("%d/%m/%Y")
-                    slot_time = slot.strftime("%H:%M")
-                    
-                    if current_date != slot_date:
-                        if current_date is not None:
-                            response += "\n"
-                        response += f"📆 {slot_date}:\n"
-                        current_date = slot_date
-                    
-                    response += f"  • {slot_time}\n"
+                    try:
+                        # Handle timezone-aware and naive datetimes
+                        if hasattr(slot, 'strftime'):
+                            slot_date = slot.strftime("%d/%m/%Y")
+                            slot_time = slot.strftime("%H:%M")
+                        else:
+                            # If it's a string or other format, try to parse
+                            if isinstance(slot, str):
+                                slot = datetime.fromisoformat(slot)
+                                slot_date = slot.strftime("%d/%m/%Y")
+                                slot_time = slot.strftime("%H:%M")
+                            else:
+                                continue
+                        
+                        if current_date != slot_date:
+                            if current_date is not None:
+                                response += "\n"
+                            response += f"📆 {slot_date}:\n"
+                            current_date = slot_date
+                        
+                        response += f"  • {slot_time}\n"
+                    except Exception as format_error:
+                        logger.error(f"Error formatting slot {slot}: {format_error}")
+                        continue
                 
                 response += "\nQual horário você prefere? Responda com a data e hora desejada."
             else:
-                response = f"❌ Não encontrei horários disponíveis para os próximos 7 dias a partir de {target_date.strftime('%d/%m/%Y')}.\n\nPor favor, entre em contato conosco para mais opções."
+                target_date_str = target_date.strftime('%d/%m/%Y') if hasattr(target_date, 'strftime') else str(target_date.date())
+                response = f"❌ Não encontrei horários disponíveis para os próximos 7 dias a partir de {target_date_str}.\n\nPor favor, entre em contato conosco para mais opções."
             
             return {
                 "response": response,
                 "appointment": None,
-                "suggestions": [s.isoformat() for s in suggestions[:10]]
+                "suggestions": [s.isoformat() if hasattr(s, 'isoformat') else str(s) for s in suggestions[:10]]
             }
         
         except Exception as e:
-            logger.error(f"Error processing suggest appointment request: {e}")
+            logger.error(f"Error processing suggest appointment request: {e}", exc_info=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {
-                "response": "Ocorreu um erro ao buscar horários disponíveis. Por favor, tente novamente.",
+                "response": f"Ocorreu um erro ao buscar horários disponíveis: {str(e)}. Por favor, tente novamente.",
                 "appointment": None
             }
     
@@ -689,15 +741,49 @@ Se não conseguir extrair uma informação, use null."""
         
         try:
             # Get all active appointments for this contact
-            appointments = await get_appointments_by_contact(db, contact_id, owner_id, include_cancelled=False)
+            try:
+                appointments = await get_appointments_by_contact(db, contact_id, owner_id, include_cancelled=False)
+                logger.info(f"Found {len(appointments)} active appointments for contact {contact_id}")
+            except Exception as e:
+                logger.error(f"Error getting active appointments: {e}", exc_info=True)
+                appointments = []
             
             # Also get recent cancelled appointments (for reference)
-            cancelled_appointments = await get_appointments_by_contact(db, contact_id, owner_id, status="cancelled")
-            # Only show cancelled from the last 7 days
-            week_ago = datetime.now() - timedelta(days=7)
-            recent_cancelled = [a for a in cancelled_appointments if a.scheduled_at >= week_ago]
+            recent_cancelled = []
+            try:
+                cancelled_appointments = await get_appointments_by_contact(db, contact_id, owner_id, status="cancelled")
+                logger.info(f"Found {len(cancelled_appointments)} cancelled appointments for contact {contact_id}")
+                
+                if cancelled_appointments:
+                    # Only show cancelled from the last 7 days
+                    from datetime import timezone
+                    # Get current time with timezone awareness
+                    now = datetime.now(timezone.utc)
+                    week_ago = now - timedelta(days=7)
+                    
+                    # Normalize timezones for comparison
+                    for a in cancelled_appointments:
+                        try:
+                            apt_date = a.scheduled_at
+                            # Ensure both have timezone for comparison
+                            if apt_date.tzinfo is None:
+                                apt_date = apt_date.replace(tzinfo=timezone.utc)
+                            
+                            # Compare dates (ignore time for this check)
+                            if apt_date.date() >= week_ago.date():
+                                recent_cancelled.append(a)
+                        except Exception as date_error:
+                            logger.error(f"Error comparing date for appointment {a.id}: {date_error}")
+                            continue
+            except Exception as e:
+                logger.error(f"Error getting cancelled appointments: {e}", exc_info=True)
+                recent_cancelled = []  # If error, just don't show cancelled
             
+            logger.info(f"Found {len(recent_cancelled)} recent cancelled appointments")
+            
+            # Check if we have any appointments to show
             if not appointments and not recent_cancelled:
+                logger.info("No appointments found, returning empty message")
                 return {
                     "response": "Você não possui agendamentos ativos no momento.\n\nPara agendar, envie uma mensagem como: 'Quero agendar para amanhã às 14h'",
                     "appointment": None
@@ -709,8 +795,13 @@ Se não conseguir extrair uma informação, use null."""
             if appointments:
                 response += "✅ Agendamentos ativos:\n"
                 for i, apt in enumerate(appointments, 1):
-                    date_str = apt.scheduled_at.strftime("%d/%m/%Y")
-                    time_str = apt.scheduled_at.strftime("%H:%M")
+                    try:
+                        date_str = apt.scheduled_at.strftime("%d/%m/%Y")
+                        time_str = apt.scheduled_at.strftime("%H:%M")
+                    except Exception as format_error:
+                        logger.error(f"Error formatting date for appointment {apt.id}: {format_error}")
+                        date_str = "Data inválida"
+                        time_str = "Hora inválida"
                     
                     status_emoji = {
                         "pending": "⏳",
@@ -727,11 +818,14 @@ Se não conseguir extrair uma informação, use null."""
                     response += f"{status_emoji} {i}. {date_str} às {time_str} ({status_text})"
                     
                     # Get service type name if available
-                    if apt.service_type_id:
-                        from app.crud_appointments import get_service_type
-                        service_type = await get_service_type(db, apt.service_type_id, owner_id)
-                        if service_type:
-                            response += f" - {service_type.name}"
+                    try:
+                        if apt.service_type_id:
+                            from app.crud_appointments import get_service_type
+                            service_type = await get_service_type(db, apt.service_type_id, owner_id)
+                            if service_type:
+                                response += f" - {service_type.name}"
+                    except Exception as service_error:
+                        logger.error(f"Error getting service type for appointment {apt.id}: {service_error}")
                     
                     if apt.notes:
                         response += f"\n   Nota: {apt.notes}"
@@ -742,9 +836,13 @@ Se não conseguir extrair uma informação, use null."""
             if recent_cancelled:
                 response += "\n❌ Agendamentos cancelados recentemente:\n"
                 for apt in recent_cancelled[:3]:  # Show max 3 cancelled
-                    date_str = apt.scheduled_at.strftime("%d/%m/%Y")
-                    time_str = apt.scheduled_at.strftime("%H:%M")
-                    response += f"❌ {date_str} às {time_str} (Cancelado)\n"
+                    try:
+                        date_str = apt.scheduled_at.strftime("%d/%m/%Y")
+                        time_str = apt.scheduled_at.strftime("%H:%M")
+                        response += f"❌ {date_str} às {time_str} (Cancelado)\n"
+                    except Exception as format_error:
+                        logger.error(f"Error formatting date for cancelled appointment {apt.id}: {format_error}")
+                        continue
             
             response += "\n💡 Dicas:\n"
             response += "• Para alterar: 'Quero mudar meu agendamento para [nova data/hora]'\n"
@@ -758,7 +856,9 @@ Se não conseguir extrair uma informação, use null."""
             }
         
         except Exception as e:
-            logger.error(f"Error processing list appointments request: {e}")
+            logger.error(f"Error processing list appointments request: {e}", exc_info=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {
                 "response": "Ocorreu um erro ao buscar seus agendamentos. Por favor, tente novamente.",
                 "appointment": None
