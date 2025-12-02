@@ -5,7 +5,8 @@ Handles appointment management and availability endpoints
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, time
+import logging
 
 from app.dependencies import get_current_user, get_db
 from app.models import User
@@ -26,6 +27,7 @@ from app.crud_appointments import (
     get_available_slots, check_availability
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
 # Service Types endpoints
@@ -93,8 +95,27 @@ async def create_recurring_availability_endpoint(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new recurring availability"""
-    availability = await create_recurring_availability(db, availability_data, current_user.id)
-    return RecurringAvailabilityResponse.from_orm(availability)
+    try:
+        availability = await create_recurring_availability(db, availability_data, current_user.id)
+        # Convert Time objects to strings for response
+        response_data = RecurringAvailabilityResponse(
+            id=availability.id,
+            owner_id=availability.owner_id,
+            day_of_week=availability.day_of_week,
+            start_time=availability.start_time.strftime("%H:%M") if isinstance(availability.start_time, time) else str(availability.start_time),
+            end_time=availability.end_time.strftime("%H:%M") if isinstance(availability.end_time, time) else str(availability.end_time),
+            slot_duration_minutes=availability.slot_duration_minutes,
+            is_active=availability.is_active,
+            created_at=availability.created_at,
+            updated_at=availability.updated_at
+        )
+        return response_data
+    except Exception as e:
+        logger.error(f"Error creating recurring availability: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create recurring availability: {str(e)}"
+        )
 
 @router.get("/availability/recurring", response_model=List[RecurringAvailabilityResponse])
 async def get_recurring_availability_endpoint(
@@ -102,8 +123,30 @@ async def get_recurring_availability_endpoint(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all recurring availability for current user"""
-    availability_list = await get_recurring_availability(db, current_user.id)
-    return [RecurringAvailabilityResponse.from_orm(a) for a in availability_list]
+    try:
+        availability_list = await get_recurring_availability(db, current_user.id)
+        # Convert Time objects to strings for response
+        result = []
+        for a in availability_list:
+            result.append(RecurringAvailabilityResponse(
+                id=a.id,
+                owner_id=a.owner_id,
+                day_of_week=a.day_of_week,
+                start_time=a.start_time.strftime("%H:%M") if isinstance(a.start_time, time) else str(a.start_time),
+                end_time=a.end_time.strftime("%H:%M") if isinstance(a.end_time, time) else str(a.end_time),
+                slot_duration_minutes=a.slot_duration_minutes,
+                is_active=a.is_active,
+                created_at=a.created_at,
+                updated_at=a.updated_at
+            ))
+        return result
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting recurring availability: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get recurring availability: {str(e)}"
+        )
 
 @router.put("/availability/recurring/{availability_id}", response_model=RecurringAvailabilityResponse)
 async def update_recurring_availability_endpoint(
@@ -113,10 +156,31 @@ async def update_recurring_availability_endpoint(
     db: AsyncSession = Depends(get_db)
 ):
     """Update a recurring availability"""
-    availability = await update_recurring_availability(db, availability_id, current_user.id, availability_update)
-    if not availability:
-        raise HTTPException(status_code=404, detail="Recurring availability not found")
-    return RecurringAvailabilityResponse.from_orm(availability)
+    try:
+        availability = await update_recurring_availability(db, availability_id, current_user.id, availability_update)
+        if not availability:
+            raise HTTPException(status_code=404, detail="Recurring availability not found")
+        # Convert Time objects to strings for response
+        response_data = RecurringAvailabilityResponse(
+            id=availability.id,
+            owner_id=availability.owner_id,
+            day_of_week=availability.day_of_week,
+            start_time=availability.start_time.strftime("%H:%M") if isinstance(availability.start_time, time) else str(availability.start_time),
+            end_time=availability.end_time.strftime("%H:%M") if isinstance(availability.end_time, time) else str(availability.end_time),
+            slot_duration_minutes=availability.slot_duration_minutes,
+            is_active=availability.is_active,
+            created_at=availability.created_at,
+            updated_at=availability.updated_at
+        )
+        return response_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating recurring availability: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update recurring availability: {str(e)}"
+        )
 
 @router.delete("/availability/recurring/{availability_id}")
 async def delete_recurring_availability_endpoint(

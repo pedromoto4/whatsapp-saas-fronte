@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 import firebase_admin
 from firebase_admin import credentials
@@ -8,6 +10,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from datetime import datetime
+import logging
 
 from app.database import create_tables
 from app.models import User, FAQ, Catalog, MessageLog, Template
@@ -77,6 +80,23 @@ app.include_router(conversations.router)
 app.include_router(whatsapp.router)
 app.include_router(settings.router)
 app.include_router(appointments.router)
+
+# Exception handler to ensure CORS headers are always sent
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler to ensure CORS headers are sent even on errors"""
+    logger = logging.getLogger(__name__)
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 @app.on_event("startup")
 async def startup_event():
