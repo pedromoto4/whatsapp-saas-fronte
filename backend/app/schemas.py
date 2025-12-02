@@ -297,3 +297,112 @@ class ConversationMessageResponse(BaseModel):
 
 class MessageSendRequest(BaseModel):
     content: str
+
+# Appointment Schemas
+class ServiceTypeBase(BaseModel):
+    name: str
+    duration_minutes: int = 30
+    description: Optional[str] = None
+
+class ServiceTypeCreate(ServiceTypeBase):
+    pass
+
+class ServiceTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    description: Optional[str] = None
+
+class ServiceTypeResponse(ServiceTypeBase):
+    id: int
+    owner_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class RecurringAvailabilityBase(BaseModel):
+    day_of_week: int  # 0=Monday, 6=Sunday
+    start_time: str  # Format: "HH:MM"
+    end_time: str  # Format: "HH:MM"
+    slot_duration_minutes: int = 30
+    is_active: bool = True
+
+class RecurringAvailabilityCreate(RecurringAvailabilityBase):
+    pass
+
+class RecurringAvailabilityUpdate(BaseModel):
+    day_of_week: Optional[int] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    slot_duration_minutes: Optional[int] = None
+    is_active: Optional[bool] = None
+
+class RecurringAvailabilityResponse(RecurringAvailabilityBase):
+    id: int
+    owner_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class AvailabilityExceptionBase(BaseModel):
+    date: datetime
+    is_blocked: bool = False
+    custom_slots: Optional[str] = None  # JSON string
+
+class AvailabilityExceptionCreate(AvailabilityExceptionBase):
+    pass
+
+class AvailabilityExceptionUpdate(BaseModel):
+    date: Optional[datetime] = None
+    is_blocked: Optional[bool] = None
+    custom_slots: Optional[str] = None
+
+class AvailabilityExceptionResponse(AvailabilityExceptionBase):
+    id: int
+    owner_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class AppointmentBase(BaseModel):
+    contact_id: int
+    service_type_id: Optional[int] = None
+    scheduled_at: datetime
+    status: str = "pending"
+    notes: Optional[str] = None
+
+class AppointmentCreate(AppointmentBase):
+    pass
+
+class AppointmentUpdate(BaseModel):
+    contact_id: Optional[int] = None
+    service_type_id: Optional[int] = None
+    scheduled_at: Optional[datetime] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+class AppointmentResponse(AppointmentBase):
+    id: int
+    owner_id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class AvailabilitySlotsRequest(BaseModel):
+    date: datetime
+    service_type_id: Optional[int] = None
+
+class AvailabilitySlot(BaseModel):
+    datetime: datetime
+    available: bool
+
+class AvailabilitySlotsResponse(BaseModel):
+    slots: List[AvailabilitySlot]
+    date: datetime

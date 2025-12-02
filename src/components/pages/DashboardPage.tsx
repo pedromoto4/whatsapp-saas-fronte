@@ -11,6 +11,8 @@ import ContactsManagement from '@/components/pages/ContactsManagement'
 // import TemplateManagement from '@/components/pages/TemplateManagement' // Hidden - in stand-by
 import ConversationsPage from '@/components/pages/ConversationsPage'
 import SettingsPage from '@/components/pages/SettingsPage'
+import AppointmentsPage from '@/components/pages/AppointmentsPage'
+import AvailabilityManagement from '@/components/pages/AvailabilityManagement'
 import { 
   Circle, 
   ChartBar, 
@@ -24,10 +26,12 @@ import {
   Check,
   X,
   FileText,
-  ChatCircleText
+  ChatCircleText,
+  Calendar,
+  Clock
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'conversations' | 'settings' // 'templates' removed - in stand-by
+type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'conversations' | 'settings' | 'appointments' | 'availability' // 'templates' removed - in stand-by
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -99,12 +103,15 @@ export default function DashboardPage() {
       const { phoneNumber } = event.detail
       if (phoneNumber) {
         setActiveSection('conversations')
-        // Forward event to ConversationsPage
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('select-conversation', { 
-            detail: { phoneNumber } 
-          }))
-        }, 100)
+        // Forward event to ConversationsPage after section change
+        // Use requestAnimationFrame to ensure ConversationsPage is mounted
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('set-active-conversation', { 
+              detail: { phoneNumber } 
+            }))
+          }, 50)
+        })
       }
     }
     
@@ -125,6 +132,8 @@ export default function DashboardPage() {
     { id: 'conversations' as const, label: 'Conversas', icon: ChatCircleText },
     { id: 'contacts' as const, label: 'Contatos', icon: Users },
     // { id: 'templates' as const, label: 'Templates', icon: FileText }, // Hidden - in stand-by
+    { id: 'appointments' as const, label: 'Agendamentos', icon: Calendar },
+    { id: 'availability' as const, label: 'Disponibilidade', icon: Clock },
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
     { id: 'settings' as const, label: 'Configurações', icon: Gear },
@@ -392,6 +401,12 @@ export default function DashboardPage() {
       
       case 'conversations':
         return <ConversationsPage />
+      
+      case 'appointments':
+        return <AppointmentsPage />
+      
+      case 'availability':
+        return <AvailabilityManagement />
       
       case 'settings':
         return <SettingsPage />

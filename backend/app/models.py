@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, Time
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -154,3 +154,66 @@ class Template(Base):
     
     # Relationships
     owner = relationship("User")
+
+class ServiceType(Base):
+    __tablename__ = "service_types"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String, nullable=False)  # ex: "Consulta", "Atendimento", "Revisão"
+    duration_minutes = Column(Integer, nullable=False, default=30)  # Duração padrão em minutos
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owner = relationship("User")
+    appointments = relationship("Appointment", back_populates="service_type")
+
+class RecurringAvailability(Base):
+    __tablename__ = "recurring_availability"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    day_of_week = Column(Integer, nullable=False)  # 0=Monday, 6=Sunday
+    start_time = Column(Time, nullable=False)  # Horário de início (ex: 09:00)
+    end_time = Column(Time, nullable=False)  # Horário de fim (ex: 18:00)
+    slot_duration_minutes = Column(Integer, nullable=False, default=30)  # Duração de cada slot
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owner = relationship("User")
+
+class AvailabilityException(Base):
+    __tablename__ = "availability_exceptions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False)  # Data específica
+    is_blocked = Column(Boolean, default=False)  # True = dia bloqueado, False = horários especiais
+    custom_slots = Column(Text, nullable=True)  # JSON com slots customizados para este dia
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owner = relationship("User")
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=False)
+    service_type_id = Column(Integer, ForeignKey("service_types.id"), nullable=True)
+    scheduled_at = Column(DateTime(timezone=True), nullable=False)  # Data e hora do agendamento
+    status = Column(String, default="pending")  # pending, confirmed, cancelled, completed
+    notes = Column(Text, nullable=True)  # Notas adicionais do agendamento
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owner = relationship("User")
+    contact = relationship("Contact")
+    service_type = relationship("ServiceType", back_populates="appointments")

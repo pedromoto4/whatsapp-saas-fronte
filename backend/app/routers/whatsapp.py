@@ -525,6 +525,51 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         intent_name, confidence = detected_intent
                         logger.info(f"🎯 Detected intent: {intent_name} (confidence: {confidence:.2f})")
                     
+                    # Check if it's an appointment request
+                    appointment_intent = await ai_service.detect_appointment_intent(message_text)
+                    if appointment_intent:
+                        logger.info(f"📅 Appointment intent detected: {appointment_intent}")
+                        try:
+                            # Process appointment request
+                            appointment_result = await ai_service.process_appointment_request(
+                                message=message_text,
+                                owner_id=contact.owner_id,
+                                contact_id=contact.id,
+                                db=db
+                            )
+                            
+                            # Send response
+                            await whatsapp_service.send_message(
+                                to=phone_number,
+                                message=appointment_result["response"]
+                            )
+                            
+                            # Log appointment response
+                            out_log = MessageLogCreate(
+                                owner_id=contact.owner_id,
+                                direction="out",
+                                kind="text",
+                                to_from=phone_number,
+                                content=appointment_result["response"],
+                                cost_estimate="0.015",
+                                is_automated=True
+                            )
+                            await create_message_log(db, out_log)
+                            logger.info(f"Appointment response sent to {phone_number}")
+                            
+                            # Continue to save message (don't process FAQ/catalog)
+                            message_data = {
+                                "contact_id": contact.id,
+                                "content": msg["text"],
+                                "status": "received"
+                            }
+                            await create_message(db, message_data)
+                            continue  # Skip FAQ/catalog processing
+                            
+                        except Exception as e:
+                            logger.error(f"Failed to process appointment request: {e}")
+                            # Fall through to normal processing
+                    
                     # Check if it's a catalog request (using improved detection)
                     catalog_keywords = ["lista", "preço", "preco", "catálogo", "catalogo", "produtos", "menu", "cardapio", "cardápio"]
                     is_catalog_request = (

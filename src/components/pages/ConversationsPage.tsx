@@ -43,6 +43,8 @@ export default function ConversationsPage() {
   const [showOnlyUnread, setShowOnlyUnread] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [showContactInfo, setShowContactInfo] = useState(true) // Show by default
+  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastProcessedPhoneRef = useRef<string | null>(null)
 
   const API_BASE_URL = getApiBaseUrl()
 
@@ -160,8 +162,15 @@ export default function ConversationsPage() {
   }
 
   const handleConversationSelect = async (phoneNumber: string) => {
+    // Prevent duplicate calls for the same conversation
+    if (activeConversation === phoneNumber) {
+      return
+    }
+    
+    // Update ref to track processed phone number
+    lastProcessedPhoneRef.current = phoneNumber
     setActiveConversation(phoneNumber)
-    loadMessages(phoneNumber)
+    loadMessages(phoneNumber, false) // Load with loading indicator on initial selection
     
     // Mark conversation as read locally (immediate UI feedback)
     setConversations(prev => {
@@ -211,31 +220,59 @@ export default function ConversationsPage() {
       }
     })
     
-    // Listen for select-conversation event (from ContactsManagement or DashboardPage)
-    const handleSelectConversation = (event: CustomEvent) => {
+    // Listen for set-active-conversation event (from DashboardPage after navigation)
+    const handleSetActiveConversation = (event: CustomEvent) => {
       const { phoneNumber } = event.detail
-      if (phoneNumber) {
+      // Only process if it's a different phone number to avoid duplicate calls
+      if (phoneNumber && phoneNumber !== lastProcessedPhoneRef.current) {
+        lastProcessedPhoneRef.current = phoneNumber
         handleConversationSelect(phoneNumber)
       }
     }
     
-    window.addEventListener('select-conversation', handleSelectConversation as EventListener)
+    window.addEventListener('set-active-conversation', handleSetActiveConversation as EventListener)
     
     return () => {
-      window.removeEventListener('select-conversation', handleSelectConversation as EventListener)
+      window.removeEventListener('set-active-conversation', handleSetActiveConversation as EventListener)
     }
   }, [])
 
   // Auto-refresh only messages of active conversation every 5 seconds (silent mode)
+  // Wait a bit after conversation selection to avoid immediate refresh
   useEffect(() => {
-    if (!activeConversation) return
+    if (!activeConversation) {
+      // Clear interval if no active conversation
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current)
+        autoRefreshIntervalRef.current = null
+      }
+      return
+    }
 
-    const interval = setInterval(() => {
-      loadMessages(activeConversation, true) // silent = true (no loading state)
-    }, 5000)
+    // Clear any existing interval
+    if (autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current)
+      autoRefreshIntervalRef.current = null
+    }
 
-    return () => clearInterval(interval)
-  }, [activeConversation])
+    // Wait 2 seconds before starting auto-refresh to avoid conflicts with initial load
+    const timeout = setTimeout(() => {
+      autoRefreshIntervalRef.current = setInterval(() => {
+        // Only refresh if conversation is still active and not currently loading
+        if (activeConversation && !messagesLoading) {
+          loadMessages(activeConversation, true) // silent = true (no loading state)
+        }
+      }, 5000)
+    }, 2000)
+
+    return () => {
+      clearTimeout(timeout)
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current)
+        autoRefreshIntervalRef.current = null
+      }
+    }
+  }, [activeConversation, messagesLoading])
 
   // Refresh conversations list every 30 seconds (silent mode)
   useEffect(() => {
