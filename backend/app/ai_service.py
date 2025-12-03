@@ -5,7 +5,7 @@ Handles AI-powered responses using OpenAI API
 import os
 from openai import AsyncOpenAI
 from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -618,7 +618,6 @@ Se não conseguir extrair uma informação, use null."""
             details = await self.extract_appointment_details(message)
             
             # Determine target date
-            from datetime import timezone
             if details.get("date"):
                 date_str = details["date"]
                 if "T" in date_str:

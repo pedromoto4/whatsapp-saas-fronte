@@ -3,10 +3,9 @@ Appointments CRUD Operations
 Handles all database operations for appointments, availability, and service types
 """
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, and_, or_, func, Time, Integer, Interval
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, update, delete, and_, or_, func, Time
 from typing import Optional, List
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 import json
 import logging
 
@@ -387,6 +386,7 @@ async def get_available_slots(
         day_of_week = target_date_only.weekday()  # 0=Monday, 6=Sunday
         
         # Get recurring availability for this day of week
+        recurring = await db.execute(
             select(RecurringAvailability).where(
                 and_(
                     RecurringAvailability.owner_id == owner_id,
@@ -417,7 +417,6 @@ async def get_available_slots(
             try:
                 custom_slots_data = json.loads(exception_obj.custom_slots)
                 slots = []
-                from datetime import timezone
                 now = datetime.now(timezone.utc)
                 for slot_time_str in custom_slots_data.get('times', []):
                     slot_time = datetime.strptime(slot_time_str, "%H:%M").time()
@@ -447,7 +446,6 @@ async def get_available_slots(
                     duration_minutes = service_type.duration_minutes
             
             # Generate slots for this recurring availability
-            from datetime import timezone
             now = datetime.now(timezone.utc)
             current_time = rec.start_time
             while current_time < rec.end_time:
