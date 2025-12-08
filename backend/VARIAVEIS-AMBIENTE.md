@@ -80,12 +80,23 @@ WHATSAPP_DEMO_MODE=true
 
 ### 4. **OpenAI (AI Service)**
 
+#### 4.1. API Key
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 ```
 - **Usado em**: `app/ai_service.py`
 - **Descrição**: Chave da API da OpenAI para respostas automáticas (fallback)
 - **Obrigatório**: ⚠️ Opcional (se não configurado, AI não funcionará)
+
+#### 4.2. Modelo
+```bash
+OPENAI_MODEL=gpt-4o-mini
+```
+- **Usado em**: `app/ai_service.py`
+- **Descrição**: Modelo da OpenAI a usar para respostas
+- **Default**: "gpt-4o-mini"
+- **Valores recomendados**: "gpt-4o-mini" (custo-benefício), "gpt-4o" (maior qualidade), "gpt-3.5-turbo" (mais económico)
+- **Obrigatório**: ❌ Não (usa gpt-4o-mini por defeito)
 
 ---
 
@@ -126,9 +137,10 @@ PORT=8000
 5. `WHATSAPP_WEBHOOK_VERIFY_TOKEN` - Para receber mensagens via webhook
 6. `WHATSAPP_BUSINESS_ACCOUNT_ID` - Para gerenciar templates do WhatsApp
 7. `OPENAI_API_KEY` - Para respostas automáticas com IA
-8. `WHATSAPP_DEMO_MODE` - Para modo demo (default: "true")
-9. `ENVIRONMENT` - Para definir ambiente (default: "production")
-10. `PORT` - Para definir porta (default: 8000)
+8. `OPENAI_MODEL` - Modelo OpenAI a usar (default: "gpt-4o-mini")
+9. `WHATSAPP_DEMO_MODE` - Para modo demo (default: "true")
+10. `ENVIRONMENT` - Para definir ambiente (default: "production")
+11. `PORT` - Para definir porta (default: 8000)
 
 ---
 
@@ -179,6 +191,7 @@ Use este checklist para verificar se você tem todas as variáveis necessárias 
 
 # OpenAI
 ✅ OPENAI_API_KEY
+✅ OPENAI_MODEL
 
 # Ambiente
 ✅ ENVIRONMENT
