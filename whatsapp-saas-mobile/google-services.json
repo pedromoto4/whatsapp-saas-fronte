@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "614740365885",
+    "project_id": "whatsapp-saas-d7e5c",
+    "storage_bucket": "whatsapp-saas-d7e5c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614740365885:android:cc210bb44d9cae823f9054",
+        "android_client_info": {
+          "package_name": "com.whatsappsaas.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "614740365885-mcv4qf1946abh2afnpgvp7nukuvfrl3t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.whatsappsaas.mobile",
+            "certificate_hash": "3138da456c2dda87bef6ddc2eadf6b4b32278c29"
+          }
+        },
+        {
+          "client_id": "614740365885-urjunocpui7bhvh1h89gaemojape8eaa.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChd73A0FMcli3dvDJM0DwthZWK3Cl03zk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "614740365885-urjunocpui7bhvh1h89gaemojape8eaa.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

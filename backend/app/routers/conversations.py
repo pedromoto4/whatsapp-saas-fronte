@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import logging
+import asyncio
+import json
 
 from app.dependencies import get_current_user, get_db
 from app.models import User
@@ -352,14 +354,27 @@ async def send_product(
     db: AsyncSession = Depends(get_db)
 ):
     """Send a catalog product as a message with image"""
+    # FORCE LOG - This should always appear
+    import sys
+    sys.stdout.write(f"\n\n{'='*80}\n")
+    sys.stdout.write(f"[PRODUCT] ENDPOINT CALLED - product_id={product_id}, phone={phone_number}, user={current_user.id}\n")
+    sys.stdout.write(f"{'='*80}\n\n")
+    sys.stdout.flush()
+    
+    logger.info(f"[PRODUCT] Received request to send product {product_id} to {phone_number} (user: {current_user.id})")
+    print(f"[PRODUCT] Received request to send product {product_id} to {phone_number} (user: {current_user.id})")
     try:
         # Get the product from catalog
         product = await get_catalog_item(db, product_id, current_user.id)
         if not product:
+            logger.error(f"[PRODUCT] Product {product_id} not found for user {current_user.id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Product not found"
             )
+        
+        logger.info(f"[PRODUCT] Product found: {product.name}, has_image_url: {bool(product.image_url)}, image_url: {product.image_url}")
+        print(f"[PRODUCT] Product found: {product.name}, has_image_url: {bool(product.image_url)}, image_url: {product.image_url}")
         
         # Ensure contact exists
         contact = await get_contact_by_phone(db, phone_number)
@@ -372,56 +387,225 @@ async def send_product(
             }
             contact = await create_contact_from_webhook(db, contact_data)
         
-        # Build the caption message
-        caption = f"🏷️ Produto: {product.name}\n"
-        caption += f"💰 Preço: {product.price}\n"
+        # Build the product description message
+        description = f"🏷️ Produto: {product.name}\n"
+        description += f"💰 Preço: {product.price}\n"
         if product.description:
-            caption += f"📝 Descrição: {product.description}"
+            description += f"📝 Descrição: {product.description}"
         
-        # Send image via WhatsApp (if product has image)
+        responses = []
+        image_sent = False
+        text_sent = False
+        
+        # Send image and description as separate messages (if product has image)
         if product.image_url:
-            response = await whatsapp_service.send_media_message(
-                to=phone_number,
-                media_url=product.image_url,
-                media_type="image",
-                caption=caption
-            )
+            logger.info(f"[PRODUCT] Product has image URL, will send image first: {product.image_url}")
+            print(f"[PRODUCT] Product has image URL, will send image first: {product.image_url}")
+            # First: Try to send image without caption
+            try:
+                logger.info(f"[PRODUCT] Attempting to send image to {phone_number}, URL: {product.image_url}")
+                print(f"[PRODUCT] Attempting to send image to {phone_number}, URL: {product.image_url}")
+                image_response = await whatsapp_service.send_media_message(
+                    to=phone_number,
+                    media_url=product.image_url,
+                    media_type="image",
+                    caption=""  # No caption - send image first
+                )
+                
+                logger.info(f"[PRODUCT] Image response received: {image_response}")
+                print(f"[PRODUCT] Image response received: {json.dumps(image_response, indent=2)}")
+                
+                # Check for errors first
+                if image_response and image_response.get("errors"):
+                    error_details = image_response.get("errors", [])
+                    logger.error(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
+                    print(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
+                    image_sent = False
+                # Check if image was sent successfully
+                elif image_response and image_response.get("messages") and len(image_response.get("messages", [])) > 0:
+                    image_sent = True
+                    responses.append(image_response)
+                    
+                    # Log the image message
+                    image_message_id = image_response["messages"][0].get("id")
+                    logger.info(f"[PRODUCT] Image message ID: {image_message_id}")
+                    print(f"[PRODUCT] Image message ID: {image_message_id}")
+                    
+                    image_log_data = MessageLogCreate(
+                        owner_id=current_user.id,
+                        direction="out",
+                        kind="catalog",
+                        to_from=phone_number,
+                        content="[Imagem do Produto]",
+                        cost_estimate="0.005",
+                        status="sent",
+                        whatsapp_message_id=image_message_id,
+                        media_url=product.image_url,
+                        media_type="image",
+                        media_filename=f"{product.name}.jpg"
+                    )
+                    await create_message_log(db, image_log_data)
+                    logger.info(f"[PRODUCT] Image sent successfully to {phone_number}")
+                    print(f"[PRODUCT] Image sent successfully to {phone_number}")
+                else:
+                    logger.warning(f"[PRODUCT] Image response has no messages and no errors: {image_response}")
+                    print(f"[PRODUCT] Image response has no messages and no errors: {json.dumps(image_response, indent=2)}")
+                    image_sent = False
+                        
+            except Exception as image_error:
+                logger.error(f"[PRODUCT] Exception sending image to {phone_number}: {str(image_error)}", exc_info=True)
+                print(f"[PRODUCT] Exception sending image to {phone_number}: {str(image_error)}")
+                import traceback
+                print(f"[PRODUCT] Traceback: {traceback.format_exc()}")
+                # Continue to send description even if image fails - DO NOT RAISE
+            
+            # Small delay to ensure image is sent before text (if image was sent)
+            if image_sent:
+                await asyncio.sleep(0.5)
+            
+            # Second: Always send description as text message (even if image failed)
+            # This is CRITICAL - must always execute
+            logger.info(f"[PRODUCT] Now sending description to {phone_number} (image_sent={image_sent})")
+            print(f"[PRODUCT] Now sending description to {phone_number} (image_sent={image_sent})")
+            print(f"[PRODUCT] Description text: {description[:100]}...")  # Log first 100 chars
+            
+            text_response = None
+            try:
+                text_response = await whatsapp_service.send_message(
+                    to=phone_number,
+                    message=description
+                )
+                
+                logger.info(f"[PRODUCT] Text response received: {text_response}")
+                print(f"[PRODUCT] Text response received: {json.dumps(text_response, indent=2)}")
+                
+                # Check for errors first (24h window, etc.)
+                if text_response and text_response.get("errors"):
+                    error_details = text_response.get("errors", [])
+                    logger.error(f"[PRODUCT] WhatsApp errors when sending description: {error_details}")
+                    print(f"[PRODUCT] WhatsApp errors when sending description: {error_details}")
+                    # Check for 24h window error
+                    for error in error_details:
+                        error_code = error.get("code", 0)
+                        error_message = error.get("message", "").lower()
+                        if error_code == 131047 or "24 hour" in error_message or "window" in error_message:
+                            logger.warning(f"[PRODUCT] 24h window issue - recipient may not have messaged in last 24h")
+                            print(f"[PRODUCT] ⚠️ 24h window issue - recipient may not have messaged in last 24h")
+                
+                if text_response and text_response.get("messages") and len(text_response.get("messages", [])) > 0:
+                    responses.append(text_response)
+                    text_sent = True
+                    print(f"[PRODUCT] Text message added to responses. Total responses: {len(responses)}")
+                    
+                    # Log the text message
+                    text_message_id = text_response["messages"][0].get("id")
+                    text_log_data = MessageLogCreate(
+                        owner_id=current_user.id,
+                        direction="out",
+                        kind="text",
+                        to_from=phone_number,
+                        content=description,
+                        cost_estimate="0.005",
+                        status="sent",
+                        whatsapp_message_id=text_message_id
+                    )
+                    await create_message_log(db, text_log_data)
+                    logger.info(f"[PRODUCT] Description sent successfully to {phone_number}")
+                    print(f"[PRODUCT] Description sent successfully to {phone_number}")
+                else:
+                    logger.error(f"[PRODUCT] Failed to send description - response: {text_response}")
+                    print(f"[PRODUCT] Failed to send description - response: {json.dumps(text_response, indent=2)}")
+            except Exception as text_error:
+                logger.error(f"[PRODUCT] Exception sending description to {phone_number}: {str(text_error)}", exc_info=True)
+                print(f"[PRODUCT] Exception sending description to {phone_number}: {str(text_error)}")
+                import traceback
+                print(f"[PRODUCT] Description exception traceback: {traceback.format_exc()}")
+                # Don't raise - if image was sent, we still have partial success
+                # Only raise if both image and text failed
+                if not image_sent:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Failed to send product: {str(text_error)}"
+                    )
+            
+            print(f"[PRODUCT] After description send attempt - text_sent={text_sent}, responses_count={len(responses)}")
+            
         else:
-            # If no image, send as text message
-            response = await whatsapp_service.send_message(
-                to=phone_number,
-                message=caption
+            # If no image, send as text message only
+            try:
+                response = await whatsapp_service.send_message(
+                    to=phone_number,
+                    message=description
+                )
+                responses.append(response)
+                
+                # Check if text was sent successfully
+                if response and response.get("messages") and len(response.get("messages", [])) > 0:
+                    text_sent = True
+                
+                # Log the outgoing message
+                whatsapp_message_id = None
+                if response.get("messages"):
+                    whatsapp_message_id = response["messages"][0].get("id")
+                
+                log_data = MessageLogCreate(
+                    owner_id=current_user.id,
+                    direction="out",
+                    kind="text",
+                    to_from=phone_number,
+                    content=description,
+                    cost_estimate="0.005",
+                    status="sent",
+                    whatsapp_message_id=whatsapp_message_id
+                )
+                await create_message_log(db, log_data)
+                logger.info(f"[PRODUCT] Description sent successfully to {phone_number} (no image)")
+            except Exception as text_error:
+                logger.error(f"[PRODUCT] Exception sending description to {phone_number}: {str(text_error)}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to send product: {str(text_error)}"
+                )
+        
+        # Determine what was sent successfully
+        # Use the flags we set during sending
+        image_sent_success = image_sent
+        text_sent_success = text_sent
+        
+        logger.info(f"[PRODUCT] Product '{product.name}' sent to {phone_number} - Responses: {len(responses)}, Image: {image_sent_success}, Text: {text_sent_success}")
+        print(f"[PRODUCT] Product '{product.name}' sent to {phone_number} - Responses: {len(responses)}, Image: {image_sent_success}, Text: {text_sent_success}")
+        
+        # If text was sent OR image was sent, consider it a success
+        if text_sent_success or image_sent_success:
+            logger.info(f"[PRODUCT] Returning success response")
+            print(f"[PRODUCT] Returning success response")
+            status_message = "Product sent successfully"
+            if product.image_url and not image_sent_success and text_sent_success:
+                status_message = "Product description sent, but image failed to send. Please check image URL."
+            elif product.image_url and image_sent_success and not text_sent_success:
+                status_message = "Product image sent, but description failed to send."
+            
+            result = {
+                "status": "success",
+                "message": status_message,
+                "product_name": product.name,
+                "image_sent": image_sent_success,
+                "description_sent": text_sent_success,
+                "whatsapp_response": responses[-1] if responses else {},  # Return last response for compatibility
+                "whatsapp_responses": responses,  # Return ALL responses (image + text)
+                "messages_sent": len(responses),
+                "note": "Se o destinatário não receber as mensagens, verifique se ele respondeu nas últimas 24 horas (janela de 24h do WhatsApp). Mensagens normais só podem ser enviadas dentro desta janela."
+            }
+            logger.info(f"[PRODUCT] Returning result: {json.dumps(result, indent=2)}")
+            print(f"[PRODUCT] Returning result: {json.dumps(result, indent=2)}")
+            return result
+        else:
+            # Nothing was sent - this is a real failure
+            logger.error(f"[PRODUCT] Failed to send product '{product.name}' to {phone_number} - No successful responses")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send product. Please try again."
             )
-        
-        # Extract message ID from WhatsApp response
-        whatsapp_message_id = None
-        if response.get("messages"):
-            whatsapp_message_id = response["messages"][0].get("id")
-        
-        # Log the outgoing message
-        log_data = MessageLogCreate(
-            owner_id=current_user.id,
-            direction="out",
-            kind="catalog" if product.image_url else "text",
-            to_from=phone_number,
-            content=caption,
-            cost_estimate="0.005",
-            status="sent",
-            whatsapp_message_id=whatsapp_message_id,
-            media_url=product.image_url if product.image_url else None,
-            media_type="image" if product.image_url else None,
-            media_filename=f"{product.name}.jpg" if product.image_url else None
-        )
-        await create_message_log(db, log_data)
-        
-        logger.info(f"Product '{product.name}' sent to {phone_number}")
-        
-        return {
-            "status": "success",
-            "message": "Product sent successfully",
-            "product_name": product.name,
-            "whatsapp_response": response
-        }
         
     except HTTPException:
         raise

@@ -175,34 +175,81 @@ class WhatsAppService:
                 logger.info(f"WhatsApp API Response Status: {response.status_code}")
                 logger.info(f"WhatsApp API Response Body: {response.text}")
                 
-                response.raise_for_status()
-                response_data = response.json()
+                # Parse response regardless of status code
+                try:
+                    response_data = response.json()
+                except:
+                    response_data = {"error": {"message": response.text, "code": response.status_code}}
                 
-                # Add delivery status information
-                if response_data.get("messages"):
-                    message_id = response_data["messages"][0].get("id")
-                    logger.info(f"Media message sent successfully with ID: {message_id}")
+                # Check if request was successful
+                if response.status_code >= 200 and response.status_code < 300:
+                    # Success - add delivery status information
+                    if response_data.get("messages"):
+                        message_id = response_data["messages"][0].get("id")
+                        logger.info(f"Media message sent successfully with ID: {message_id}")
+                        
+                        response_data["delivery_info"] = {
+                            "message_id": message_id,
+                            "status": "sent",
+                            "media_type": media_type,
+                            "note": "Media message sent to WhatsApp. Delivery depends on 24h window rule and recipient's WhatsApp status."
+                        }
                     
-                    response_data["delivery_info"] = {
-                        "message_id": message_id,
-                        "status": "sent",
-                        "media_type": media_type,
-                        "note": "Media message sent to WhatsApp. Delivery depends on 24h window rule and recipient's WhatsApp status."
-                    }
-                
-                return response_data
+                    return response_data
+                else:
+                    # HTTP error - return response with errors instead of raising
+                    logger.error(f"WhatsApp API returned error status {response.status_code}")
+                    if not response_data.get("errors") and response_data.get("error"):
+                        # Convert single error to errors array format
+                        error_obj = response_data.get("error", {})
+                        response_data["errors"] = [{
+                            "code": error_obj.get("code", response.status_code),
+                            "message": error_obj.get("message", error_obj.get("title", "Unknown error")),
+                            "title": error_obj.get("title", "Error")
+                        }]
+                    return response_data
+                    
         except httpx.HTTPError as e:
-            logger.error(f"WhatsApp API error: {e}")
+            logger.error(f"WhatsApp API HTTP error: {e}")
+            # Try to get error details from response
+            error_response = {"errors": []}
             if hasattr(e, 'response') and e.response:
                 logger.error(f"Error response: {e.response.text}")
                 try:
                     error_data = e.response.json()
-                    error_message = error_data.get("error", {}).get("message", str(e))
-                    error_code = error_data.get("error", {}).get("code", "unknown")
-                    logger.error(f"Error code: {error_code}, Message: {error_message}")
+                    if error_data.get("error"):
+                        error_obj = error_data.get("error", {})
+                        error_response["errors"] = [{
+                            "code": error_obj.get("code", "unknown"),
+                            "message": error_obj.get("message", str(e)),
+                            "title": error_obj.get("title", "Error")
+                        }]
+                    elif error_data.get("errors"):
+                        error_response["errors"] = error_data.get("errors", [])
                 except:
-                    pass
-            raise Exception(f"Failed to send WhatsApp message: {e}")
+                    error_response["errors"] = [{
+                        "code": "unknown",
+                        "message": str(e),
+                        "title": "HTTP Error"
+                    }]
+            else:
+                error_response["errors"] = [{
+                    "code": "network_error",
+                    "message": str(e),
+                    "title": "Network Error"
+                }]
+            # Return error response instead of raising
+            return error_response
+        except Exception as e:
+            logger.error(f"Unexpected error sending media message: {e}", exc_info=True)
+            # Return error response instead of raising
+            return {
+                "errors": [{
+                    "code": "unexpected_error",
+                    "message": str(e),
+                    "title": "Unexpected Error"
+                }]
+            }
     
     async def get_contact_info(self, phone_number: str) -> Dict[str, Any]:
         """

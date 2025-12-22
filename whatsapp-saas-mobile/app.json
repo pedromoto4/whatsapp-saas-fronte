@@ -1,0 +1,108 @@
+{
+  "expo": {
+    "name": "WhatsApp SaaS",
+    "slug": "whatsapp-saas-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "whatsapp-saas",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.whatsappsaas.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Precisamos de acesso à câmara para enviar fotos nas conversas.",
+        "NSPhotoLibraryUsageDescription": "Precisamos de acesso à galeria para enviar imagens nas conversas.",
+        "NSContactsUsageDescription": "Precisamos de acesso aos contactos para sincronizar com a aplicação."
+      }
+    },
+    "android": {
+      "package": "com.whatsappsaas.mobile",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_CONTACTS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.614740365885-urjunocpui7bhvh1h89gaemojape8eaa"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#25D366"
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Permitir acesso aos contactos para sincronização."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir acesso às fotos para enviar nas conversas.",
+          "cameraPermission": "Permitir acesso à câmara para tirar fotos."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir acesso à câmara para tirar fotos."
+        }
+      ],
+      "expo-asset",
+      "expo-build-properties"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0c4828d8-42e9-467d-a3ad-32a4d57dd295"
+      }
+    },
+    "owner": "pedromoto4"
+  }
+}
