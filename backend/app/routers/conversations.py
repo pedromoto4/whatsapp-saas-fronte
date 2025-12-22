@@ -408,6 +408,29 @@ async def send_product(
                 print(f"[PRODUCT] ❌ Invalid image URL format: {product.image_url}")
                 image_sent = False
             else:
+                # Test if image URL is accessible (WhatsApp needs to download it)
+                import httpx
+                try:
+                    logger.info(f"[PRODUCT] Testing image URL accessibility: {product.image_url}")
+                    print(f"[PRODUCT] Testing image URL accessibility: {product.image_url}")
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        test_response = await client.head(product.image_url, follow_redirects=True)
+                        if test_response.status_code >= 200 and test_response.status_code < 300:
+                            content_type = test_response.headers.get("content-type", "")
+                            logger.info(f"[PRODUCT] ✅ Image URL is accessible (status: {test_response.status_code}, content-type: {content_type})")
+                            print(f"[PRODUCT] ✅ Image URL is accessible (status: {test_response.status_code}, content-type: {content_type})")
+                            # Check if it's actually an image
+                            if not content_type.startswith("image/"):
+                                logger.warning(f"[PRODUCT] ⚠️ URL may not be an image (content-type: {content_type})")
+                                print(f"[PRODUCT] ⚠️ URL may not be an image (content-type: {content_type})")
+                        else:
+                            logger.error(f"[PRODUCT] ❌ Image URL returned status {test_response.status_code}")
+                            print(f"[PRODUCT] ❌ Image URL returned status {test_response.status_code}")
+                except Exception as url_test_error:
+                    logger.error(f"[PRODUCT] ❌ Failed to test image URL accessibility: {str(url_test_error)}")
+                    print(f"[PRODUCT] ❌ Failed to test image URL accessibility: {str(url_test_error)}")
+                    # Continue anyway - WhatsApp will try to download it
+                
                 # First: Try to send image without caption
                 try:
                     logger.info(f"[PRODUCT] Attempting to send image to {phone_number}, URL: {product.image_url}")
@@ -423,7 +446,21 @@ async def send_product(
                 print(f"[PRODUCT] Image response received: {json.dumps(image_response, indent=2)}")
                 
                 # Check for errors first (including 24h window, invalid URL, etc.)
+                # Also check for error object (not just errors array)
+                has_errors = False
                 if image_response and image_response.get("errors"):
+                    has_errors = True
+                elif image_response and image_response.get("error"):
+                    # Convert single error to errors array format
+                    error_obj = image_response.get("error", {})
+                    image_response["errors"] = [{
+                        "code": error_obj.get("code", "unknown"),
+                        "message": error_obj.get("message", str(error_obj)),
+                        "title": error_obj.get("title", "Error")
+                    }]
+                    has_errors = True
+                
+                if has_errors:
                     error_details = image_response.get("errors", [])
                     logger.error(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
                     print(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
