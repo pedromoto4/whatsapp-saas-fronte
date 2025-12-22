@@ -441,87 +441,87 @@ async def send_product(
                         media_type="image",
                         caption=""  # No caption - send image first
                     )
-                
-                logger.info(f"[PRODUCT] Image response received: {image_response}")
-                print(f"[PRODUCT] Image response received: {json.dumps(image_response, indent=2)}")
-                
-                # Check for errors first (including 24h window, invalid URL, etc.)
-                # Also check for error object (not just errors array)
-                has_errors = False
-                if image_response and image_response.get("errors"):
-                    has_errors = True
-                elif image_response and image_response.get("error"):
-                    # Convert single error to errors array format
-                    error_obj = image_response.get("error", {})
-                    image_response["errors"] = [{
-                        "code": error_obj.get("code", "unknown"),
-                        "message": error_obj.get("message", str(error_obj)),
-                        "title": error_obj.get("title", "Error")
-                    }]
-                    has_errors = True
-                
-                if has_errors:
-                    error_details = image_response.get("errors", [])
-                    logger.error(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
-                    print(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
-                    # Check for specific error types
-                    for error in error_details:
-                        error_code = error.get("code", 0)
-                        error_message = error.get("message", "").lower()
-                        error_subcode = error.get("error_subcode", 0)
-                        logger.error(f"[PRODUCT] Image error - Code: {error_code}, Subcode: {error_subcode}, Message: {error_message}")
-                        print(f"[PRODUCT] Image error - Code: {error_code}, Subcode: {error_subcode}, Message: {error_message}")
-                        # Common errors:
-                        # - 131047: 24h window
-                        # - 131026: Invalid media URL
-                        # - 131051: Media download failed
-                        if error_code == 131047 or "24 hour" in error_message or "window" in error_message:
-                            logger.warning(f"[PRODUCT] ⚠️ 24h window issue for image")
-                            print(f"[PRODUCT] ⚠️ 24h window issue for image")
-                        elif error_code == 131026 or "invalid" in error_message or "url" in error_message:
-                            logger.error(f"[PRODUCT] ❌ Invalid image URL: {product.image_url}")
-                            print(f"[PRODUCT] ❌ Invalid image URL: {product.image_url}")
-                        elif error_code == 131051 or "download" in error_message or "fetch" in error_message:
-                            logger.error(f"[PRODUCT] ❌ Failed to download image from URL: {product.image_url}")
-                            print(f"[PRODUCT] ❌ Failed to download image from URL: {product.image_url}")
-                    image_sent = False
-                # Check if image was sent successfully
-                elif image_response and image_response.get("messages") and len(image_response.get("messages", [])) > 0:
-                    image_sent = True
-                    responses.append(image_response)
                     
-                    # Log the image message
-                    image_message_id = image_response["messages"][0].get("id")
-                    logger.info(f"[PRODUCT] Image message ID: {image_message_id}")
-                    print(f"[PRODUCT] ✅ Image message ID: {image_message_id}")
+                    logger.info(f"[PRODUCT] Image response received: {image_response}")
+                    print(f"[PRODUCT] Image response received: {json.dumps(image_response, indent=2)}")
                     
-                    image_log_data = MessageLogCreate(
-                        owner_id=current_user.id,
-                        direction="out",
-                        kind="catalog",
-                        to_from=phone_number,
-                        content="[Imagem do Produto]",
-                        cost_estimate="0.005",
-                        status="sent",
-                        whatsapp_message_id=image_message_id,
-                        media_url=product.image_url,
-                        media_type="image",
-                        media_filename=f"{product.name}.jpg"
-                    )
-                    await create_message_log(db, image_log_data)
-                    logger.info(f"[PRODUCT] Image sent successfully to {phone_number}")
-                    print(f"[PRODUCT] ✅ Image sent successfully to {phone_number}")
-                else:
-                    # No messages and no errors - this is suspicious
-                    logger.warning(f"[PRODUCT] Image response has no messages and no errors: {image_response}")
-                    print(f"[PRODUCT] ⚠️ Image response has no messages and no errors: {json.dumps(image_response, indent=2)}")
-                    # Check if there's an error object instead of errors array
-                    if image_response and image_response.get("error"):
+                    # Check for errors first (including 24h window, invalid URL, etc.)
+                    # Also check for error object (not just errors array)
+                    has_errors = False
+                    if image_response and image_response.get("errors"):
+                        has_errors = True
+                    elif image_response and image_response.get("error"):
+                        # Convert single error to errors array format
                         error_obj = image_response.get("error", {})
-                        logger.error(f"[PRODUCT] Image error object found: {error_obj}")
-                        print(f"[PRODUCT] ❌ Image error object: {json.dumps(error_obj, indent=2)}")
-                    image_sent = False
+                        image_response["errors"] = [{
+                            "code": error_obj.get("code", "unknown"),
+                            "message": error_obj.get("message", str(error_obj)),
+                            "title": error_obj.get("title", "Error")
+                        }]
+                        has_errors = True
+                    
+                    if has_errors:
+                        error_details = image_response.get("errors", [])
+                        logger.error(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
+                        print(f"[PRODUCT] Failed to send image - WhatsApp errors: {error_details}")
+                        # Check for specific error types
+                        for error in error_details:
+                            error_code = error.get("code", 0)
+                            error_message = error.get("message", "").lower()
+                            error_subcode = error.get("error_subcode", 0)
+                            logger.error(f"[PRODUCT] Image error - Code: {error_code}, Subcode: {error_subcode}, Message: {error_message}")
+                            print(f"[PRODUCT] Image error - Code: {error_code}, Subcode: {error_subcode}, Message: {error_message}")
+                            # Common errors:
+                            # - 131047: 24h window
+                            # - 131026: Invalid media URL
+                            # - 131051: Media download failed
+                            if error_code == 131047 or "24 hour" in error_message or "window" in error_message:
+                                logger.warning(f"[PRODUCT] ⚠️ 24h window issue for image")
+                                print(f"[PRODUCT] ⚠️ 24h window issue for image")
+                            elif error_code == 131026 or "invalid" in error_message or "url" in error_message:
+                                logger.error(f"[PRODUCT] ❌ Invalid image URL: {product.image_url}")
+                                print(f"[PRODUCT] ❌ Invalid image URL: {product.image_url}")
+                            elif error_code == 131051 or "download" in error_message or "fetch" in error_message:
+                                logger.error(f"[PRODUCT] ❌ Failed to download image from URL: {product.image_url}")
+                                print(f"[PRODUCT] ❌ Failed to download image from URL: {product.image_url}")
+                        image_sent = False
+                    # Check if image was sent successfully
+                    elif image_response and image_response.get("messages") and len(image_response.get("messages", [])) > 0:
+                        image_sent = True
+                        responses.append(image_response)
                         
+                        # Log the image message
+                        image_message_id = image_response["messages"][0].get("id")
+                        logger.info(f"[PRODUCT] Image message ID: {image_message_id}")
+                        print(f"[PRODUCT] ✅ Image message ID: {image_message_id}")
+                        
+                        image_log_data = MessageLogCreate(
+                            owner_id=current_user.id,
+                            direction="out",
+                            kind="catalog",
+                            to_from=phone_number,
+                            content="[Imagem do Produto]",
+                            cost_estimate="0.005",
+                            status="sent",
+                            whatsapp_message_id=image_message_id,
+                            media_url=product.image_url,
+                            media_type="image",
+                            media_filename=f"{product.name}.jpg"
+                        )
+                        await create_message_log(db, image_log_data)
+                        logger.info(f"[PRODUCT] Image sent successfully to {phone_number}")
+                        print(f"[PRODUCT] ✅ Image sent successfully to {phone_number}")
+                    else:
+                        # No messages and no errors - this is suspicious
+                        logger.warning(f"[PRODUCT] Image response has no messages and no errors: {image_response}")
+                        print(f"[PRODUCT] ⚠️ Image response has no messages and no errors: {json.dumps(image_response, indent=2)}")
+                        # Check if there's an error object instead of errors array
+                        if image_response and image_response.get("error"):
+                            error_obj = image_response.get("error", {})
+                            logger.error(f"[PRODUCT] Image error object found: {error_obj}")
+                            print(f"[PRODUCT] ❌ Image error object: {json.dumps(error_obj, indent=2)}")
+                        image_sent = False
+                            
                 except Exception as image_error:
                     logger.error(f"[PRODUCT] Exception sending image to {phone_number}: {str(image_error)}", exc_info=True)
                     print(f"[PRODUCT] Exception sending image to {phone_number}: {str(image_error)}")
