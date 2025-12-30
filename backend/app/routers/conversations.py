@@ -409,12 +409,14 @@ async def send_product(
                 image_sent = False
             else:
                 # Test if image URL is accessible (WhatsApp needs to download it)
+                # Use GET instead of HEAD since some servers don't support HEAD
                 import httpx
                 try:
                     logger.info(f"[PRODUCT] Testing image URL accessibility: {product.image_url}")
                     print(f"[PRODUCT] Testing image URL accessibility: {product.image_url}")
                     async with httpx.AsyncClient(timeout=10.0) as client:
-                        test_response = await client.head(product.image_url, follow_redirects=True)
+                        # Use GET with stream=True to avoid downloading the full image
+                        test_response = await client.get(product.image_url, follow_redirects=True, timeout=10.0)
                         if test_response.status_code >= 200 and test_response.status_code < 300:
                             content_type = test_response.headers.get("content-type", "")
                             logger.info(f"[PRODUCT] ✅ Image URL is accessible (status: {test_response.status_code}, content-type: {content_type})")
@@ -424,11 +426,11 @@ async def send_product(
                                 logger.warning(f"[PRODUCT] ⚠️ URL may not be an image (content-type: {content_type})")
                                 print(f"[PRODUCT] ⚠️ URL may not be an image (content-type: {content_type})")
                         else:
-                            logger.error(f"[PRODUCT] ❌ Image URL returned status {test_response.status_code}")
-                            print(f"[PRODUCT] ❌ Image URL returned status {test_response.status_code}")
+                            logger.warning(f"[PRODUCT] ⚠️ Image URL returned status {test_response.status_code} (but will try to send anyway)")
+                            print(f"[PRODUCT] ⚠️ Image URL returned status {test_response.status_code} (but will try to send anyway)")
                 except Exception as url_test_error:
-                    logger.error(f"[PRODUCT] ❌ Failed to test image URL accessibility: {str(url_test_error)}")
-                    print(f"[PRODUCT] ❌ Failed to test image URL accessibility: {str(url_test_error)}")
+                    logger.warning(f"[PRODUCT] ⚠️ Failed to test image URL accessibility: {str(url_test_error)} (but will try to send anyway)")
+                    print(f"[PRODUCT] ⚠️ Failed to test image URL accessibility: {str(url_test_error)} (but will try to send anyway)")
                     # Continue anyway - WhatsApp will try to download it
                 
                 # First: Try to send image without caption

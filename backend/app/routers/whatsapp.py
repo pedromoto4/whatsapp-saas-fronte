@@ -32,14 +32,16 @@ from app.crud import (
     get_catalog_items
 )
 from app.schemas import MessageLogCreate
+from app.storage import get_storage_service
 
 logger = logging.getLogger(__name__)
 
 # Media proxy endpoint handles authentication automatically
 
-# Upload configuration
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# Initialize storage service (Railway Volume or local fallback)
+storage_service = get_storage_service()
+storage_service.ensure_directory_exists()
+UPLOAD_DIR = storage_service.get_upload_dir()
 
 # File validation
 ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
@@ -184,9 +186,21 @@ async def upload_media(
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = UPLOAD_DIR / unique_filename
         
+        # Ensure directory exists
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        
         # Save file
-        with open(file_path, "wb") as buffer:
-            buffer.write(content)
+        try:
+            with open(file_path, "wb") as buffer:
+                buffer.write(content)
+            # Verify file was saved
+            if not file_path.exists():
+                logger.error(f"File was not saved correctly: {file_path}")
+                raise Exception("File was not saved correctly")
+            logger.info(f"File saved successfully: {file_path.absolute()}, size: {file_path.stat().st_size} bytes")
+        except Exception as save_error:
+            logger.error(f"Error saving file: {save_error}, path: {file_path.absolute()}")
+            raise
         
         # Determine media type for WhatsApp
         if file_type in ALLOWED_IMAGE_TYPES:
@@ -200,8 +214,8 @@ async def upload_media(
         else:
             media_type = "document"  # fallback
         
-        # Generate public URL
-        public_url = f"https://whatsapp-saas-fronte-production.up.railway.app/whatsapp/uploads/{unique_filename}"
+        # Generate public URL using storage service
+        public_url = storage_service.get_public_url(unique_filename)
         
         logger.info(f"File uploaded: {file.filename} -> {unique_filename} ({media_type})")
         
@@ -222,13 +236,25 @@ async def upload_media(
         raise HTTPException(status_code=500, detail="Error uploading file")
 
 @router.get("/uploads/{filename}")
-async def serve_uploaded_file(filename: str):
+@router.head("/uploads/{filename}")  # Support HEAD requests for testing
+async def serve_uploaded_file(filename: str, request: Request):
     """
     Serve uploaded files publicly
+    WhatsApp needs to download these files, so they must be publicly accessible
     """
     file_path = UPLOAD_DIR / filename
     
+    # Log for debugging
+    logger.info(f"Serving file request: {filename}, path: {file_path}, exists: {file_path.exists()}")
+    logger.info(f"UPLOAD_DIR: {UPLOAD_DIR.absolute()}, UPLOAD_DIR exists: {UPLOAD_DIR.exists()}")
+    
     if not file_path.exists():
+        # List available files for debugging
+        if UPLOAD_DIR.exists():
+            available_files = [f.name for f in UPLOAD_DIR.iterdir() if f.is_file()]
+            logger.error(f"File not found: {filename}. Available files: {available_files[:10]}")  # Log first 10
+        else:
+            logger.error(f"UPLOAD_DIR does not exist: {UPLOAD_DIR.absolute()}")
         raise HTTPException(status_code=404, detail="File not found")
     
     # Determine content type
@@ -236,12 +262,27 @@ async def serve_uploaded_file(filename: str):
     if not content_type:
         content_type = "application/octet-stream"
     
+    # For HEAD requests, return headers only
+    if request.method == "HEAD":
+        from fastapi.responses import Response
+        return Response(
+            status_code=200,
+            headers={
+                "Content-Type": content_type,
+                "Content-Length": str(file_path.stat().st_size),
+                "Cache-Control": "public, max-age=3600",
+                "Access-Control-Allow-Origin": "*",  # Allow WhatsApp to access
+            }
+        )
+    
     return FileResponse(
         path=str(file_path),
         media_type=content_type,
         filename=filename,
         headers={
-            "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
+            "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+            "Access-Control-Allow-Origin": "*",  # Allow WhatsApp to access
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
         }
     )
 
