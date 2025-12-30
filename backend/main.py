@@ -17,6 +17,7 @@ from app.models import User, FAQ, Catalog, MessageLog, Template
 from app.schemas import UserResponse
 from app.dependencies import get_current_user, get_db
 from app.routers import contacts, campaigns, messages, whatsapp, faqs, catalog, message_logs, templates, conversations, settings, appointments
+from app.storage import get_storage_service
 
 load_dotenv()
 
@@ -140,6 +141,77 @@ async def health_check():
         "firebase_configured": firebase_configured,
         "database_configured": bool(os.getenv("DATABASE_URL"))
     }
+
+@app.get("/api/storage/diagnostic")
+async def storage_diagnostic():
+    """Diagnostic endpoint to validate Railway Volume mounting"""
+    from pathlib import Path
+    import stat
+    
+    storage_service = get_storage_service()
+    upload_dir = storage_service.get_upload_dir()
+    
+    # Check if directory exists
+    dir_exists = upload_dir.exists()
+    dir_path = str(upload_dir.absolute())
+    
+    # Check if it's writable
+    is_writable = False
+    write_error = None
+    if dir_exists:
+        try:
+            # Try to create a test file
+            test_file = upload_dir / ".test_write"
+            test_file.write_text("test")
+            test_file.unlink()
+            is_writable = True
+        except Exception as e:
+            is_writable = False
+            write_error = str(e)
+    
+    # Count files in directory
+    file_count = 0
+    file_list = []
+    if dir_exists:
+        try:
+            files = list(upload_dir.iterdir())
+            file_count = len(files)
+            # List first 10 files
+            file_list = [f.name for f in files[:10]]
+        except Exception as e:
+            file_list = [f"Error listing files: {str(e)}"]
+    
+    # Check if it's likely a mounted volume (starts with /data or /mnt)
+    is_likely_volume = dir_path.startswith("/data") or dir_path.startswith("/mnt")
+    
+    # Check environment variables
+    volume_mount_path = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "not set")
+    storage_type = os.getenv("STORAGE_TYPE", "railway")
+    
+    result = {
+        "status": "ok" if (dir_exists and is_writable) else "error",
+        "storage_type": storage_type,
+        "upload_directory": {
+            "path": dir_path,
+            "exists": dir_exists,
+            "writable": is_writable,
+            "is_likely_volume": is_likely_volume,
+            "file_count": file_count,
+            "sample_files": file_list
+        },
+        "environment": {
+            "RAILWAY_VOLUME_MOUNT_PATH": volume_mount_path,
+            "STORAGE_TYPE": storage_type
+        },
+        "public_url_base": storage_service.get_public_url("test.jpg").replace("/test.jpg", "")
+    }
+    
+    if not dir_exists:
+        result["error"] = f"Directory does not exist: {dir_path}"
+    elif not is_writable:
+        result["error"] = f"Directory is not writable: {write_error if write_error else 'Unknown error'}"
+    
+    return result
 
 @app.get("/api/test")
 async def test_endpoint():
