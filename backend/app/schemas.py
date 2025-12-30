@@ -406,3 +406,22 @@ class AvailabilitySlot(BaseModel):
 class AvailabilitySlotsResponse(BaseModel):
     slots: List[AvailabilitySlot]
     date: datetime
+
+# Push Token Schemas
+class PushTokenBase(BaseModel):
+    token: str
+    platform: str  # ios, android
+    device_name: Optional[str] = None
+
+class PushTokenCreate(PushTokenBase):
+    pass
+
+class PushTokenResponse(PushTokenBase):
+    id: int
+    owner_id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True

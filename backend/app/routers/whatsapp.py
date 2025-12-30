@@ -27,7 +27,9 @@ from app.crud import (
     create_contact_from_webhook, 
     match_faq_by_keywords, 
     build_catalog_message, 
-    create_message_log, 
+    create_message_log,
+)
+from app.push_service import send_new_message_notification 
     get_faqs,
     get_catalog_items
 )
@@ -334,7 +336,12 @@ async def send_media_message(
         )
         logger.info(f"WhatsApp response: {result}")
         
-        # Log outgoing media message
+        # Extract message ID from WhatsApp response
+        whatsapp_message_id = None
+        if result.get("messages"):
+            whatsapp_message_id = result["messages"][0].get("id")
+        
+        # Log outgoing media message with WhatsApp message ID for status tracking
         log_data = MessageLogCreate(
             owner_id=contact.owner_id,
             direction="out",
@@ -342,6 +349,8 @@ async def send_media_message(
             to_from=phone_number,
             content=caption or f"[{media_type.upper()}]",
             cost_estimate="0.00",
+            status="sent",
+            whatsapp_message_id=whatsapp_message_id,
             media_url=media_url,
             media_type=media_type,
             media_filename=media_url.split('/')[-1]
@@ -389,6 +398,11 @@ async def send_whatsapp_message(
             message=message_data.content
         )
         
+        # Extract message ID from WhatsApp response
+        whatsapp_message_id = None
+        if response.get("messages"):
+            whatsapp_message_id = response["messages"][0].get("id")
+        
         # Save message to database
         message_data_dict = {
             "contact_id": contact.id,
@@ -401,14 +415,16 @@ async def send_whatsapp_message(
         
         message = await create_message(db, message_data_dict)
         
-        # Log outgoing message
+        # Log outgoing message with WhatsApp message ID for status tracking
         log_data = MessageLogCreate(
             owner_id=current_user.id,
             direction="out",
             kind="text",
             to_from=message_data.phone_number,
             content=message_data.content,
-            cost_estimate="0.005"
+            cost_estimate="0.005",
+            status="sent",
+            whatsapp_message_id=whatsapp_message_id
         )
         await create_message_log(db, log_data)
         
@@ -557,6 +573,18 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     )
                     await create_message_log(db, log_data)
                     
+                    # Send push notification for new message
+                    try:
+                        await send_new_message_notification(
+                            db=db,
+                            user_id=contact.owner_id,
+                            contact_name=contact.name,
+                            phone_number=phone_number,
+                            message_preview=message_text
+                        )
+                    except Exception as push_error:
+                        logger.error(f"Error sending push notification: {push_error}")
+                    
                     normalized_text = normalize_text(message_text, remove_accents=True, stem=True)
                     logger.info(f"Processing message for owner_id={contact.owner_id}, text='{normalized_text}'")
                     
@@ -613,12 +641,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             
                             if appointment_result:
                                 # Send response
-                                await whatsapp_service.send_message(
+                                appointment_response = await whatsapp_service.send_message(
                                     to=phone_number,
                                     message=appointment_result["response"]
                                 )
                                 
-                                # Log appointment response
+                                # Extract message ID from WhatsApp response
+                                appointment_message_id = None
+                                if appointment_response.get("messages"):
+                                    appointment_message_id = appointment_response["messages"][0].get("id")
+                                
+                                # Log appointment response with WhatsApp message ID for status tracking
                                 out_log = MessageLogCreate(
                                     owner_id=contact.owner_id,
                                     direction="out",
@@ -626,6 +659,8 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                     to_from=phone_number,
                                     content=appointment_result["response"],
                                     cost_estimate="0.015",
+                                    status="sent",
+                                    whatsapp_message_id=appointment_message_id,
                                     is_automated=True
                                 )
                                 await create_message_log(db, out_log)
@@ -657,25 +692,33 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         try:
                             catalog_message = await build_catalog_message(db, contact.owner_id)
                             if catalog_message:
-                                await whatsapp_service.send_message(
+                                catalog_response = await whatsapp_service.send_message(
                                     to=phone_number,
                                     message=catalog_message
                                 )
+                                
+                                # Extract message ID from WhatsApp response
+                                catalog_message_id = None
+                                if catalog_response.get("messages"):
+                                    catalog_message_id = catalog_response["messages"][0].get("id")
+                                
                                 logger.info(f"Catalog sent to {phone_number}")
+                                
+                                # Log outgoing catalog message with WhatsApp message ID for status tracking
+                                out_log = MessageLogCreate(
+                                    owner_id=contact.owner_id,
+                                    direction="out",
+                                    kind="text",
+                                    to_from=phone_number,
+                                    content=catalog_message,
+                                    cost_estimate="0.005",  # Estimativa de custo
+                                    status="sent",
+                                    whatsapp_message_id=catalog_message_id,
+                                    is_automated=True  # Resposta automática
+                                )
+                                await create_message_log(db, out_log)
                             else:
                                 logger.warning(f"No catalog items found for owner_id={contact.owner_id}")
-                            
-                            # Log outgoing catalog message
-                            out_log = MessageLogCreate(
-                                owner_id=contact.owner_id,
-                                direction="out",
-                                kind="text",
-                                to_from=phone_number,
-                                content=catalog_message,
-                                cost_estimate="0.005",  # Estimativa de custo
-                                is_automated=True  # Resposta automática
-                            )
-                            await create_message_log(db, out_log)
                         except Exception as e:
                             logger.error(f"Failed to send catalog: {e}")
                     else:
@@ -689,13 +732,19 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                             # Send FAQ response
                             try:
                                 logger.info(f"Sending FAQ response: {matched_faq.answer}")
-                                await whatsapp_service.send_message(
+                                faq_response = await whatsapp_service.send_message(
                                     to=phone_number,
                                     message=matched_faq.answer
                                 )
+                                
+                                # Extract message ID from WhatsApp response
+                                faq_message_id = None
+                                if faq_response.get("messages"):
+                                    faq_message_id = faq_response["messages"][0].get("id")
+                                
                                 logger.info(f"FAQ response sent to {phone_number}: {matched_faq.question}")
                                 
-                                # Log outgoing FAQ message
+                                # Log outgoing FAQ message with WhatsApp message ID for status tracking
                                 out_log = MessageLogCreate(
                                     owner_id=contact.owner_id,
                                     direction="out",
@@ -703,6 +752,8 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                     to_from=phone_number,
                                     content=matched_faq.answer,
                                     cost_estimate="0.005",
+                                    status="sent",
+                                    whatsapp_message_id=faq_message_id,
                                     is_automated=True  # Resposta automática
                                 )
                                 await create_message_log(db, out_log)
@@ -744,12 +795,17 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                     
                                     if ai_response:
                                         logger.info(f"AI generated response: {ai_response[:50]}...")
-                                        await whatsapp_service.send_message(
+                                        ai_response_result = await whatsapp_service.send_message(
                                             to=phone_number,
                                             message=ai_response
                                         )
                                         
-                                        # Log AI response
+                                        # Extract message ID from WhatsApp response
+                                        ai_message_id = None
+                                        if ai_response_result.get("messages"):
+                                            ai_message_id = ai_response_result["messages"][0].get("id")
+                                        
+                                        # Log AI response with WhatsApp message ID for status tracking
                                         out_log = MessageLogCreate(
                                             owner_id=contact.owner_id,
                                             direction="out",
@@ -757,6 +813,8 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                                             to_from=phone_number,
                                             content=ai_response,
                                             cost_estimate="0.015",  # AI responses cost more
+                                            status="sent",
+                                            whatsapp_message_id=ai_message_id,
                                             is_automated=True
                                         )
                                         await create_message_log(db, out_log)

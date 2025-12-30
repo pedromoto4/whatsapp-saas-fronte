@@ -16,7 +16,7 @@ from app.database import create_tables
 from app.models import User, FAQ, Catalog, MessageLog, Template
 from app.schemas import UserResponse
 from app.dependencies import get_current_user, get_db
-from app.routers import contacts, campaigns, messages, whatsapp, faqs, catalog, message_logs, templates, conversations, settings, appointments
+from app.routers import contacts, campaigns, messages, whatsapp, faqs, catalog, message_logs, templates, conversations, settings, appointments, push_tokens
 from app.storage import get_storage_service
 
 load_dotenv()
@@ -81,6 +81,7 @@ app.include_router(conversations.router)
 app.include_router(whatsapp.router)
 app.include_router(settings.router)
 app.include_router(appointments.router)
+app.include_router(push_tokens.router)
 
 # Exception handler to ensure CORS headers are always sent
 @app.exception_handler(Exception)

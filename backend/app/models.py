@@ -217,3 +217,18 @@ class Appointment(Base):
     owner = relationship("User")
     contact = relationship("Contact")
     service_type = relationship("ServiceType", back_populates="appointments")
+
+class PushToken(Base):
+    __tablename__ = "push_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, nullable=False, unique=True, index=True)  # Expo push token
+    platform = Column(String, nullable=False)  # ios, android
+    device_name = Column(String, nullable=True)  # Nome do dispositivo
+    is_active = Column(Boolean, default=True)  # Para desativar tokens sem deletar
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owner = relationship("User")

@@ -80,6 +80,22 @@ export const useAuthStore = create<AuthStore>()(
             isLoggedIn: true,
             loading: false,
           });
+
+          // Register push token after successful login
+          try {
+            const { registerForPushNotifications, registerPushTokenWithBackend } = await import('@/services/notifications');
+            const { Platform } = await import('react-native');
+            const { default: Device } = await import('expo-device');
+            
+            if (Device.isDevice) {
+              const pushToken = await registerForPushNotifications();
+              if (pushToken) {
+                await registerPushTokenWithBackend(pushToken);
+              }
+            }
+          } catch (pushError) {
+            console.log('Push notification registration failed (non-critical):', pushError);
+          }
         } catch (error: any) {
           set({ loading: false });
           
@@ -137,6 +153,22 @@ export const useAuthStore = create<AuthStore>()(
               isLoggedIn: true,
               loading: false,
             });
+
+            // Register push token after successful login
+            try {
+              const { registerForPushNotifications, registerPushTokenWithBackend } = await import('@/services/notifications');
+              const { Platform } = await import('react-native');
+              const { default: Device } = await import('expo-device');
+              
+              if (Device.isDevice) {
+                const pushToken = await registerForPushNotifications();
+                if (pushToken) {
+                  await registerPushTokenWithBackend(pushToken);
+                }
+              }
+            } catch (pushError) {
+              console.log('Push notification registration failed (non-critical):', pushError);
+            }
           } else {
             throw new Error('Login cancelado pelo utilizador');
           }

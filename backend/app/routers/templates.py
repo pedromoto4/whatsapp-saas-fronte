@@ -219,7 +219,12 @@ async def send_template_endpoint(
             message=full_message
         )
         
-        # Log message
+        # Extract message ID from WhatsApp response
+        whatsapp_message_id = None
+        if response.get("messages"):
+            whatsapp_message_id = response["messages"][0].get("id")
+        
+        # Log message with WhatsApp message ID for status tracking
         log_data = MessageLogCreate(
             owner_id=current_user.id,
             direction="out",
@@ -227,7 +232,9 @@ async def send_template_endpoint(
             to_from=request.to,
             content=full_message,
             template_name=template.name,
-            cost_estimate="0.005"
+            cost_estimate="0.005",
+            status="sent",
+            whatsapp_message_id=whatsapp_message_id
         )
         await create_message_log(db, log_data)
         
