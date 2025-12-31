@@ -4,9 +4,65 @@ import sys
 import subprocess
 import uvicorn
 
+def setup_alembic_if_needed():
+    """Setup alembic_version table if database has tables but no alembic tracking"""
+    try:
+        print("🔍 Checking Alembic version tracking...")
+        import asyncio
+        from app.database import engine
+        from sqlalchemy import text, inspect
+        
+        async def check_and_setup():
+            async with engine.begin() as conn:
+                # Check if alembic_version table exists
+                inspector = inspect(await conn.get_sync_engine())
+                tables = inspector.get_table_names()
+                
+                if 'alembic_version' not in tables:
+                    print("📝 Creating alembic_version table...")
+                    await conn.execute(text("""
+                        CREATE TABLE alembic_version (
+                            version_num VARCHAR(32) NOT NULL,
+                            CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
+                        )
+                    """))
+                    print("✅ alembic_version table created")
+                
+                # Check if there's a version recorded
+                result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+                version = result.scalar_one_or_none()
+                
+                if not version and 'users' in tables:
+                    # Database has tables but no alembic version - mark appropriate migration
+                    if 'push_tokens' in tables:
+                        version = '004_add_push_tokens_table'
+                    elif 'appointments' in tables:
+                        version = '003_add_appointments_tables'
+                    elif 'faqs' in tables:
+                        version = '002_add_faq_table'
+                    else:
+                        version = '001'
+                    
+                    print(f"📝 Marking migration {version} as current (tables already exist)...")
+                    await conn.execute(
+                        text("INSERT INTO alembic_version (version_num) VALUES (:version)"),
+                        {"version": version}
+                    )
+                    print(f"✅ Marked migration {version} as current")
+                elif version:
+                    print(f"✅ Alembic version already set to: {version}")
+        
+        asyncio.run(check_and_setup())
+    except Exception as e:
+        print(f"⚠️  Could not setup alembic version tracking: {e}")
+        # Continue anyway
+
 def run_migrations():
     """Run Alembic migrations before starting the server"""
     try:
+        # First, setup alembic_version if needed
+        setup_alembic_if_needed()
+        
         print("🔄 Running database migrations...")
         print(f"Working directory: {os.getcwd()}")
         print(f"Python executable: {sys.executable}")

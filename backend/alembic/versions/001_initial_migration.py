@@ -16,6 +16,17 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Check if tables already exist (for existing databases)
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    existing_tables = inspector.get_table_names()
+    
+    # If users table already exists, skip this migration
+    if 'users' in existing_tables:
+        print("⚠️  Tables already exist, skipping initial migration")
+        return
+    
     # Create users table
     op.create_table('users',
         sa.Column('id', sa.Integer(), nullable=False),
