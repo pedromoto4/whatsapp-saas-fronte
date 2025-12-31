@@ -62,11 +62,19 @@ async def get_current_user(
                 detail=f"Invalid token format: {str(e)}"
             )
         except firebase_admin.exceptions.ExpiredIdTokenError:
+            logger.warning("Token expired")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired. Please refresh your authentication."
             )
+        except firebase_admin.exceptions.InvalidIdTokenError as e:
+            logger.warning(f"Invalid token: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token: {str(e)}"
+            )
         except Exception as e:
+            logger.error(f"Token verification error: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Token verification failed: {str(e)}"
