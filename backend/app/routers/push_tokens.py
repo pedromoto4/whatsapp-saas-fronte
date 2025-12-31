@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/push-tokens", tags=["Push Tokens"])
 
-@router.post("/", response_model=PushTokenResponse, status_code=status.HTTP_201_CREATED)
+# Use empty string instead of "/" to avoid 307 redirect when called without trailing slash
+@router.post("", response_model=PushTokenResponse, status_code=status.HTTP_201_CREATED)
 async def register_push_token(
     token_data: PushTokenCreate,
     current_user: User = Depends(get_current_user),
@@ -84,7 +85,7 @@ async def register_push_token(
             detail=f"Failed to register push token: {str(e)}"
         )
 
-@router.get("/", response_model=List[PushTokenResponse])
+@router.get("", response_model=List[PushTokenResponse])
 async def get_push_tokens(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
