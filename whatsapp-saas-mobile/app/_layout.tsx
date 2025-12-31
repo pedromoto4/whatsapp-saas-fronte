@@ -49,7 +49,10 @@ function RootLayoutNav() {
 
   // Initialize push notifications when user is logged in
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn) {
+      console.log('User not logged in, skipping push notification setup');
+      return;
+    }
 
     // Register for push notifications
     const setupNotifications = async () => {
@@ -60,16 +63,19 @@ function RootLayoutNav() {
           return;
         }
 
+        // Wait a bit to ensure auth is fully initialized
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         const token = await registerForPushNotifications();
         if (token) {
           console.log('Push token obtained:', token.substring(0, 20) + '...');
           
-          // Register token with backend
+          // Register token with backend (will check auth internally)
           const success = await registerPushTokenWithBackend(token);
           if (success) {
-            console.log('Push token registered with backend');
+            console.log('✅ Push token registered with backend');
           } else {
-            console.error('Failed to register push token with backend');
+            console.log('⚠️  Failed to register push token (user may not be fully authenticated yet)');
           }
         }
       } catch (error) {

@@ -79,10 +79,20 @@ export async function registerForPushNotifications(): Promise<string | null> {
  */
 export async function registerPushTokenWithBackend(token: string): Promise<boolean> {
   try {
+    // Check if user is logged in before trying to register token
+    const { useAuthStore } = await import('@/lib/auth-store');
+    const { isLoggedIn, token: authToken } = useAuthStore.getState();
+    
+    if (!isLoggedIn || !authToken) {
+      console.log('⚠️  User not logged in, skipping push token registration');
+      return false;
+    }
+    
     console.log('Attempting to register push token with backend...');
     console.log('Token (first 20 chars):', token.substring(0, 20) + '...');
     console.log('Platform:', Platform.OS);
     console.log('Device:', Device.modelName || 'Unknown Device');
+    console.log('User logged in:', isLoggedIn);
     
     const response = await authFetch('/api/push-tokens', {
       method: 'POST',

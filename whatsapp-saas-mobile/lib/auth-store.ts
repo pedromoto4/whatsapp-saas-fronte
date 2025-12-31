@@ -81,21 +81,23 @@ export const useAuthStore = create<AuthStore>()(
             loading: false,
           });
 
-          // Register push token after successful login
-          try {
-            const { registerForPushNotifications, registerPushTokenWithBackend } = await import('@/services/notifications');
-            const { Platform } = await import('react-native');
-            const { default: Device } = await import('expo-device');
-            
-            if (Device.isDevice) {
-              const pushToken = await registerForPushNotifications();
-              if (pushToken) {
-                await registerPushTokenWithBackend(pushToken);
+          // Register push token after successful login (with delay to ensure auth is ready)
+          setTimeout(async () => {
+            try {
+              const { registerForPushNotifications, registerPushTokenWithBackend } = await import('@/services/notifications');
+              const { Platform } = await import('react-native');
+              const { default: Device } = await import('expo-device');
+              
+              if (Device.isDevice) {
+                const pushToken = await registerForPushNotifications();
+                if (pushToken) {
+                  await registerPushTokenWithBackend(pushToken);
+                }
               }
+            } catch (pushError) {
+              console.log('Push notification registration failed (non-critical):', pushError);
             }
-          } catch (pushError) {
-            console.log('Push notification registration failed (non-critical):', pushError);
-          }
+          }, 2000); // Wait 2 seconds to ensure auth is fully ready
         } catch (error: any) {
           set({ loading: false });
           
@@ -154,21 +156,23 @@ export const useAuthStore = create<AuthStore>()(
               loading: false,
             });
 
-            // Register push token after successful login
-            try {
-              const { registerForPushNotifications, registerPushTokenWithBackend } = await import('@/services/notifications');
-              const { Platform } = await import('react-native');
-              const { default: Device } = await import('expo-device');
-              
-              if (Device.isDevice) {
-                const pushToken = await registerForPushNotifications();
-                if (pushToken) {
-                  await registerPushTokenWithBackend(pushToken);
+            // Register push token after successful login (with delay to ensure auth is ready)
+            setTimeout(async () => {
+              try {
+                const { registerForPushNotifications, registerPushTokenWithBackend } = await import('@/services/notifications');
+                const { Platform } = await import('react-native');
+                const { default: Device } = await import('expo-device');
+                
+                if (Device.isDevice) {
+                  const pushToken = await registerForPushNotifications();
+                  if (pushToken) {
+                    await registerPushTokenWithBackend(pushToken);
+                  }
                 }
+              } catch (pushError) {
+                console.log('Push notification registration failed (non-critical):', pushError);
               }
-            } catch (pushError) {
-              console.log('Push notification registration failed (non-critical):', pushError);
-            }
+            }, 2000); // Wait 2 seconds to ensure auth is fully ready
           } else {
             throw new Error('Login cancelado pelo utilizador');
           }
