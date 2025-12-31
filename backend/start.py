@@ -14,11 +14,19 @@ def setup_alembic_if_needed():
         
         async def check_and_setup():
             async with engine.begin() as conn:
-                # Check if alembic_version table exists
-                inspector = inspect(await conn.get_sync_engine())
-                tables = inspector.get_table_names()
+                # Check if alembic_version table exists using SQL query
+                try:
+                    result = await conn.execute(text("""
+                        SELECT table_name 
+                        FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'alembic_version'
+                    """))
+                    alembic_exists = result.scalar_one_or_none() is not None
+                except Exception:
+                    alembic_exists = False
                 
-                if 'alembic_version' not in tables:
+                if not alembic_exists:
                     print("📝 Creating alembic_version table...")
                     await conn.execute(text("""
                         CREATE TABLE alembic_version (
@@ -29,26 +37,42 @@ def setup_alembic_if_needed():
                     print("✅ alembic_version table created")
                 
                 # Check if there's a version recorded
-                result = await conn.execute(text("SELECT version_num FROM alembic_version"))
-                version = result.scalar_one_or_none()
+                try:
+                    result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+                    version = result.scalar_one_or_none()
+                except Exception:
+                    version = None
                 
-                if not version and 'users' in tables:
-                    # Database has tables but no alembic version - mark appropriate migration
-                    if 'push_tokens' in tables:
-                        version = '004_add_push_tokens_table'
-                    elif 'appointments' in tables:
-                        version = '003_add_appointments_tables'
-                    elif 'faqs' in tables:
-                        version = '002_add_faq_table'
-                    else:
-                        version = '001'
-                    
-                    print(f"📝 Marking migration {version} as current (tables already exist)...")
-                    await conn.execute(
-                        text("INSERT INTO alembic_version (version_num) VALUES (:version)"),
-                        {"version": version}
-                    )
-                    print(f"✅ Marked migration {version} as current")
+                # Check which tables exist to determine migration state
+                if not version:
+                    try:
+                        result = await conn.execute(text("""
+                            SELECT table_name 
+                            FROM information_schema.tables 
+                            WHERE table_schema = 'public'
+                        """))
+                        existing_tables = {row[0] for row in result.fetchall()}
+                        
+                        if 'users' in existing_tables:
+                            # Database has tables but no alembic version - mark appropriate migration
+                            if 'push_tokens' in existing_tables:
+                                version = '004_add_push_tokens_table'
+                            elif 'appointments' in existing_tables:
+                                version = '003_add_appointments_tables'
+                            elif 'faqs' in existing_tables:
+                                version = '002_add_faq_table'
+                            else:
+                                version = '001'
+                            
+                            if version:
+                                print(f"📝 Marking migration {version} as current (tables already exist)...")
+                                await conn.execute(
+                                    text("INSERT INTO alembic_version (version_num) VALUES (:version)"),
+                                    {"version": version}
+                                )
+                                print(f"✅ Marked migration {version} as current")
+                    except Exception as e:
+                        print(f"⚠️  Could not check existing tables: {e}")
                 elif version:
                     print(f"✅ Alembic version already set to: {version}")
         

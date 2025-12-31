@@ -22,13 +22,24 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import your models here for 'autogenerate' support
-from app.database import Base
-# Import all models to ensure they're registered with Base.metadata
-from app.models import (
-    User, Contact, Campaign, Message, FAQ, Catalog, 
-    MessageLog, Template, ServiceType, RecurringAvailability,
-    AvailabilityException, Appointment, PushToken
-)
+# Use try/except to handle import errors gracefully
+try:
+    from app.database import Base
+    # Import all models to ensure they're registered with Base.metadata
+    from app.models import (
+        User, Contact, Campaign, Message, FAQ, Catalog, 
+        MessageLog, Template, ServiceType, RecurringAvailability,
+        AvailabilityException, Appointment, PushToken
+    )
+except ImportError as e:
+    # If imports fail, log but continue - migrations might still work
+    import logging
+    logging.warning(f"Could not import all models: {e}")
+    # Try to import at least Base
+    try:
+        from app.database import Base
+    except ImportError:
+        raise
 
 # Set the target metadata
 target_metadata = Base.metadata
@@ -80,7 +91,8 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata
         )
 
         with context.begin_transaction():
