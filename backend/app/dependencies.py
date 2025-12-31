@@ -12,7 +12,8 @@ from app.schemas import UserCreate
 from app.crud import create_user, get_user_by_firebase_uid
 
 # Security
-security = HTTPBearer()
+# Use auto_error=False to handle errors manually and return better error messages
+security = HTTPBearer(auto_error=False)
 
 async def get_db():
     """Dependency to get database session"""
@@ -24,19 +25,37 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db)
 ):
     """Verify Firebase ID token and return current user"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Check if credentials were provided
+    if not credentials:
+        logger.warning("No authorization credentials provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated. Please provide a valid Bearer token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     try:
         # Check if Firebase Admin is initialized
         try:
             firebase_admin.get_app()
         except ValueError:
+            logger.error("Firebase Admin not initialized")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Firebase Admin not configured. Please configure FIREBASE_CREDENTIALS_JSON."
             )
         
+        # Log token info (first 20 chars only for security)
+        token_preview = credentials.credentials[:20] + "..." if len(credentials.credentials) > 20 else credentials.credentials
+        logger.info(f"Verifying token: {token_preview}")
+        
         # Verify the Firebase ID token
         try:
             decoded_token = auth.verify_id_token(credentials.credentials)
+            logger.info(f"Token verified successfully for UID: {decoded_token.get('uid')}")
         except firebase_admin.exceptions.InvalidArgumentError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
