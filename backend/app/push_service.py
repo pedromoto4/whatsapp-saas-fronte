@@ -114,12 +114,15 @@ async def send_push_to_user(
         tokens = result.scalars().all()
         
         if not tokens:
-            logger.info(f"No active push tokens found for user {user_id}")
+            logger.info(f"⚠️  No active push tokens found for user {user_id}")
             return 0
+        
+        logger.info(f"📱 Found {len(tokens)} active push token(s) for user {user_id}")
         
         # Send notification to all tokens
         success_count = 0
         for token_obj in tokens:
+            logger.info(f"   Token: {token_obj.token[:30]}... (platform: {token_obj.platform})")
             success = await send_push_notification(
                 token_obj.token,
                 title,
