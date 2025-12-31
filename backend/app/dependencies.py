@@ -25,8 +25,34 @@ async def get_current_user(
 ):
     """Verify Firebase ID token and return current user"""
     try:
+        # Check if Firebase Admin is initialized
+        try:
+            firebase_admin.get_app()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Firebase Admin not configured. Please configure FIREBASE_CREDENTIALS_JSON."
+            )
+        
         # Verify the Firebase ID token
-        decoded_token = auth.verify_id_token(credentials.credentials)
+        try:
+            decoded_token = auth.verify_id_token(credentials.credentials)
+        except firebase_admin.exceptions.InvalidArgumentError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token format: {str(e)}"
+            )
+        except firebase_admin.exceptions.ExpiredIdTokenError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired. Please refresh your authentication."
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Token verification failed: {str(e)}"
+            )
+        
         firebase_uid = decoded_token['uid']
         
         # Get user from database
@@ -42,10 +68,15 @@ async def get_current_user(
             user = await create_user(db, user_data)
         
         return user
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
-        print(f"Firebase auth error: {e}")  # Debug log
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Firebase auth error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail=f"Authentication failed: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
