@@ -8,11 +8,13 @@ def run_migrations():
     """Run Alembic migrations before starting the server"""
     try:
         print("🔄 Running database migrations...")
+        # Set working directory to ensure alembic can find alembic.ini
         result = subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             check=False,
             capture_output=True,
-            text=True
+            text=True,
+            cwd=os.path.dirname(os.path.abspath(__file__))
         )
         
         if result.returncode == 0:
@@ -28,6 +30,8 @@ def run_migrations():
             # Continue anyway - migrations might already be up to date
     except Exception as e:
         print(f"⚠️  Could not run migrations: {e}")
+        import traceback
+        traceback.print_exc()
         print("Continuing with server startup...")
 
 if __name__ == "__main__":

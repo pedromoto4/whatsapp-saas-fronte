@@ -23,7 +23,12 @@ if config.config_file_name is not None:
 
 # Import your models here for 'autogenerate' support
 from app.database import Base
-from app.models import User, Contact, Campaign, Message
+# Import all models to ensure they're registered with Base.metadata
+from app.models import (
+    User, Contact, Campaign, Message, FAQ, Catalog, 
+    MessageLog, Template, ServiceType, RecurringAvailability,
+    AvailabilityException, Appointment, PushToken
+)
 
 # Set the target metadata
 target_metadata = Base.metadata
