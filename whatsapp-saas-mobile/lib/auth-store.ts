@@ -372,6 +372,9 @@ export const authFetch = async (
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    console.log('🔐 Auth token present (first 20 chars):', token.substring(0, 20) + '...');
+  } else {
+    console.warn('⚠️  No auth token available for request to:', endpoint);
   }
 
   const response = await fetch(`${baseUrl}${endpoint}`, {

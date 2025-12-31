@@ -115,34 +115,55 @@ export async function registerPushTokenWithBackend(token: string): Promise<boole
         console.log('✅ Push token registered (no response body)');
         return true;
       }
-    } else {
-      // Get error details from response
-      let errorMessage = 'Unknown error';
-      let errorData: any = null;
-      
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          errorData = await response.json();
-          errorMessage = errorData.detail || errorData.message || JSON.stringify(errorData);
         } else {
-          const text = await response.text();
-          errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+          // Get error details from response
+          let errorMessage = 'Unknown error';
+          let errorData: any = null;
+          let responseText = '';
+          
+          try {
+            // Try to get response as text first to see what we're dealing with
+            responseText = await response.text();
+            console.error('Response body (text):', responseText);
+            
+            // Try to parse as JSON
+            try {
+              errorData = JSON.parse(responseText);
+              errorMessage = errorData.detail || errorData.message || errorData.error || JSON.stringify(errorData);
+            } catch {
+              // Not JSON, use text as error message
+              errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
+            }
+          } catch (e) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            console.error('Error reading response:', e);
+          }
+          
+          console.error('❌ Failed to register push token with backend');
+          console.error('Status:', response.status);
+          console.error('Status Text:', response.statusText);
+          console.error('Error message:', errorMessage);
+          console.error('Error data:', errorData);
+          console.error('Response body:', responseText);
+          
+          // Log response headers for debugging
+          const headersObj: Record<string, string> = {};
+          response.headers.forEach((value, key) => {
+            headersObj[key] = value;
+          });
+          console.error('Response headers:', headersObj);
+          
+          // Check if it's an authentication error
+          if (response.status === 403 || response.status === 401) {
+            console.error('⚠️  Authentication error - user may not be fully authenticated');
+            console.error('Current auth state:', {
+              isLoggedIn: useAuthStore.getState().isLoggedIn,
+              hasToken: !!useAuthStore.getState().token
+            });
+          }
+          
+          return false;
         }
-      } catch (e) {
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      }
-      
-      console.error('❌ Failed to register push token with backend');
-      console.error('Status:', response.status);
-      console.error('Error message:', errorMessage);
-      console.error('Error data:', errorData);
-      
-      // Log response headers for debugging
-      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
-      
-      return false;
-    }
   } catch (error: any) {
     console.error('❌ Exception while registering push token:', error);
     console.error('Error type:', error?.constructor?.name);
