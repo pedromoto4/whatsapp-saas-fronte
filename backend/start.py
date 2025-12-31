@@ -8,7 +8,17 @@ def run_migrations():
     """Run Alembic migrations before starting the server"""
     try:
         print("🔄 Running database migrations...")
-        # Set working directory to ensure alembic can find alembic.ini
+        print(f"Working directory: {os.getcwd()}")
+        print(f"Python executable: {sys.executable}")
+        
+        # Check if alembic.ini exists
+        alembic_ini = os.path.join(os.path.dirname(__file__), "alembic.ini")
+        if not os.path.exists(alembic_ini):
+            print(f"⚠️  alembic.ini not found at {alembic_ini}")
+            print("Skipping migrations...")
+            return
+        
+        # Run migrations
         result = subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             check=False,
@@ -20,14 +30,20 @@ def run_migrations():
         if result.returncode == 0:
             print("✅ Database migrations completed successfully")
             if result.stdout:
-                print(result.stdout)
+                # Print only important lines
+                for line in result.stdout.split('\n'):
+                    if line.strip() and ('INFO' in line or 'Running upgrade' in line or 'Running downgrade' in line):
+                        print(f"  {line}")
         else:
             print(f"⚠️  Migration warning (exit code {result.returncode}):")
             if result.stderr:
+                print("STDERR:")
                 print(result.stderr)
             if result.stdout:
+                print("STDOUT:")
                 print(result.stdout)
-            # Continue anyway - migrations might already be up to date
+            # Continue anyway - migrations might already be up to date or tables might exist
+            print("Continuing with server startup (migrations may have failed but server will start)...")
     except Exception as e:
         print(f"⚠️  Could not run migrations: {e}")
         import traceback

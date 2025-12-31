@@ -102,15 +102,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def startup_event():
-    """Create database tables on startup"""
+    """Startup event - create tables and initialize background tasks"""
+    # Create database tables on startup
     try:
         await create_tables()
     except Exception:
         pass  # Continue even if DB setup fails
-
-@app.on_event("startup")
-async def startup_event():
-    """Startup event - initialize background tasks"""
+    
+    # Initialize background tasks
     start_background_task()
 
 @app.on_event("shutdown")
