@@ -25,7 +25,7 @@ async def send_push_notification(
     Send a push notification to a single device using Expo Push Notification Service
     
     Args:
-        token: Expo push token
+        token: Expo push token (should be in format ExponentPushToken[...])
         title: Notification title
         body: Notification body
         data: Optional data payload
@@ -34,7 +34,12 @@ async def send_push_notification(
         bool: True if sent successfully, False otherwise
     """
     try:
-        payload = {
+        # Log the notification attempt
+        logger.info(f"📤 Sending push notification to token: {token[:30]}...")
+        logger.info(f"   Title: {title}")
+        logger.info(f"   Body: {body[:50]}...")
+        # Expo Push API expects an array of messages
+        message = {
             "to": token,
             "title": title,
             "body": body,
@@ -44,22 +49,34 @@ async def send_push_notification(
         }
         
         if data:
-            payload["data"] = data
+            message["data"] = data
+        
+        # Send as array of messages
+        payload = [message]
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(EXPO_PUSH_URL, json=payload)
             
             if response.status_code == 200:
                 result = response.json()
-                # Check if notification was successfully queued
-                if result.get("data") and result["data"].get("status") == "ok":
-                    logger.info(f"Push notification sent successfully to {token[:20]}...")
-                    return True
+                # Expo returns an object with "data" array containing results for each message
+                if result.get("data") and len(result["data"]) > 0:
+                    message_result = result["data"][0]
+                    if message_result.get("status") == "ok":
+                        logger.info(f"✅ Push notification sent successfully to {token[:30]}...")
+                        logger.info(f"   Receipt ID: {message_result.get('id', 'N/A')}")
+                        return True
+                    else:
+                        error_message = message_result.get("message", "Unknown error")
+                        error_code = message_result.get("details", {}).get("error", "N/A")
+                        logger.warning(f"⚠️  Push notification failed: {error_message} (code: {error_code})")
+                        logger.warning(f"   Full result: {message_result}")
+                        return False
                 else:
-                    logger.warning(f"Push notification failed: {result}")
+                    logger.warning(f"⚠️  Push notification failed: {result}")
                     return False
             else:
-                logger.error(f"Failed to send push notification: {response.status_code} - {response.text}")
+                logger.error(f"❌ Failed to send push notification: {response.status_code} - {response.text}")
                 return False
                 
     except Exception as e:
