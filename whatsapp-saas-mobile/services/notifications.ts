@@ -79,7 +79,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
  */
 export async function registerPushTokenWithBackend(token: string): Promise<boolean> {
   try {
-    const response = await authFetch('/api/push-tokens/', {
+    console.log('Attempting to register push token with backend...');
+    console.log('Token (first 20 chars):', token.substring(0, 20) + '...');
+    console.log('Platform:', Platform.OS);
+    console.log('Device:', Device.modelName || 'Unknown Device');
+    
+    const response = await authFetch('/api/push-tokens', {
       method: 'POST',
       body: JSON.stringify({
         token,
@@ -88,15 +93,57 @@ export async function registerPushTokenWithBackend(token: string): Promise<boole
       }),
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+
     if (response.ok) {
-      console.log('Push token registered with backend');
-      return true;
+      try {
+        const data = await response.json();
+        console.log('✅ Push token registered with backend successfully:', data);
+        return true;
+      } catch (jsonError) {
+        console.log('✅ Push token registered (no response body)');
+        return true;
+      }
     } else {
-      console.error('Failed to register push token with backend');
+      // Get error details from response
+      let errorMessage = 'Unknown error';
+      let errorData: any = null;
+      
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || JSON.stringify(errorData);
+        } else {
+          const text = await response.text();
+          errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      
+      console.error('❌ Failed to register push token with backend');
+      console.error('Status:', response.status);
+      console.error('Error message:', errorMessage);
+      console.error('Error data:', errorData);
+      
+      // Log response headers for debugging
+      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       return false;
     }
-  } catch (error) {
-    console.error('Error registering push token:', error);
+  } catch (error: any) {
+    console.error('❌ Exception while registering push token:', error);
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error?.message);
+    console.error('Error stack:', error?.stack);
+    
+    // Check if it's a network error
+    if (error?.message?.includes('Network request failed') || error?.message?.includes('fetch')) {
+      console.error('Network error - check internet connection and API URL');
+    }
+    
     return false;
   }
 }
