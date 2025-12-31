@@ -26,20 +26,39 @@ if config.config_file_name is not None:
 try:
     from app.database import Base
     # Import all models to ensure they're registered with Base.metadata
-    from app.models import (
-        User, Contact, Campaign, Message, FAQ, Catalog, 
-        MessageLog, Template, ServiceType, RecurringAvailability,
-        AvailabilityException, Appointment, PushToken
-    )
-except ImportError as e:
-    # If imports fail, log but continue - migrations might still work
-    import logging
-    logging.warning(f"Could not import all models: {e}")
-    # Try to import at least Base
     try:
-        from app.database import Base
-    except ImportError:
-        raise
+        from app.models import (
+            User, Contact, Campaign, Message, FAQ, Catalog, 
+            MessageLog, Template, ServiceType, RecurringAvailability,
+            AvailabilityException, Appointment, PushToken
+        )
+    except ImportError as model_error:
+        # If some models fail to import, try importing them individually
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Could not import all models at once: {model_error}")
+        
+        # Import core models first
+        from app.models import User, Contact, Campaign, Message
+        
+        # Try to import optional models
+        optional_models = [
+            'FAQ', 'Catalog', 'MessageLog', 'Template',
+            'ServiceType', 'RecurringAvailability', 'AvailabilityException', 
+            'Appointment', 'PushToken'
+        ]
+        
+        for model_name in optional_models:
+            try:
+                exec(f"from app.models import {model_name}")
+            except ImportError:
+                logger.warning(f"Could not import {model_name}, continuing...")
+                pass
+except ImportError as e:
+    # Critical error - cannot import Base
+    import logging
+    logging.error(f"Critical: Could not import app.database.Base: {e}")
+    raise
 
 # Set the target metadata
 target_metadata = Base.metadata
