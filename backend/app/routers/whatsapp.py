@@ -28,11 +28,10 @@ from app.crud import (
     match_faq_by_keywords, 
     build_catalog_message, 
     create_message_log,
-)
-from app.push_service import send_new_message_notification 
     get_faqs,
     get_catalog_items
 )
+from app.push_service import send_new_message_notification
 from app.schemas import MessageLogCreate
 from app.storage import get_storage_service
 
