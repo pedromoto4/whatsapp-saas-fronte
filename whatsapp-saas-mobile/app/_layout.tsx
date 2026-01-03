@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -33,6 +33,7 @@ const queryClient = new QueryClient({
 
 function RootLayoutNav() {
   const { loading, checkAuth, isLoggedIn } = useAuthStore();
+  const router = useRouter();
   const notificationListener = useRef<Notifications.Subscription>();
   const responseListener = useRef<Notifications.Subscription>();
 
@@ -85,19 +86,47 @@ function RootLayoutNav() {
 
     setupNotifications();
 
+    // Function to update badge count
+    const updateBadgeCount = async () => {
+      try {
+        const { authFetch } = await import('@/lib/auth-store');
+        const { API_ENDPOINTS } = await import('@/lib/api-config');
+        const { setBadgeCount } = await import('@/services/notifications');
+        
+        const response = await authFetch(API_ENDPOINTS.UNREAD_COUNT);
+        if (response.ok) {
+          const data = await response.json();
+          const unreadCount = data.unread_count || 0;
+          await setBadgeCount(unreadCount);
+          console.log('Badge count updated:', unreadCount);
+        }
+      } catch (error) {
+        console.error('Error updating badge count:', error);
+      }
+    };
+    
     // Set up notification listeners
-    notificationListener.current = addNotificationReceivedListener((notification) => {
+    notificationListener.current = addNotificationReceivedListener(async (notification) => {
       console.log('Notification received:', notification);
+      // Update badge count when notification is received
+      await updateBadgeCount();
     });
+    
+    // Update badge count on mount and periodically
+    updateBadgeCount();
+    const badgeInterval = setInterval(updateBadgeCount, 30000); // Update every 30 seconds
 
     responseListener.current = addNotificationResponseListener((response) => {
       console.log('Notification response:', response);
       // Handle navigation based on notification data
       const data = response.notification.request.content.data;
       if (data?.type === 'new_message' && data?.phone_number) {
-        // Navigate to chat screen - this would need router access
-        // For now, just log it
-        console.log('Should navigate to chat with:', data.phone_number);
+        // Navigate to chat screen when user taps notification
+        console.log('Navigating to chat with:', data.phone_number);
+        router.push({
+          pathname: '/chat',
+          params: { phone: data.phone_number },
+        });
       }
     });
 
@@ -107,6 +136,9 @@ function RootLayoutNav() {
       }
       if (responseListener.current) {
         Notifications.removeNotificationSubscription(responseListener.current);
+      }
+      if (badgeInterval) {
+        clearInterval(badgeInterval);
       }
     };
   }, [isLoggedIn]);

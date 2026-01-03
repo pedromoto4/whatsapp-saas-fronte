@@ -49,7 +49,21 @@ async def periodic_cleanup():
     while True:
         await asyncio.sleep(86400)  # Wait 24 hours
         print(f"[{datetime.now()}] Starting automatic cleanup...")
+        
+        # Cleanup old files
         cleanup_old_files(days_old=90)
+        
+        # Cleanup inactive push tokens
+        try:
+            from app.database import SessionLocal
+            from app.push_service import cleanup_inactive_tokens
+            
+            async with SessionLocal() as db:
+                deactivated_count = await cleanup_inactive_tokens(db, days_inactive=90)
+                print(f"[{datetime.now()}] Deactivated {deactivated_count} inactive push tokens")
+        except Exception as e:
+            print(f"[{datetime.now()}] Error cleaning up push tokens: {e}")
+        
         print(f"[{datetime.now()}] Cleanup complete!")
 
 def start_background_task():

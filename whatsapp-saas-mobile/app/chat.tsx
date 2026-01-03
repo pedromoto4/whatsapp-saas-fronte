@@ -88,6 +88,18 @@ export default function ChatPage() {
         await authFetch(API_ENDPOINTS.CONVERSATION_MARK_READ(phone || ''), {
           method: 'POST',
         });
+        
+        // Update badge count after marking as read
+        try {
+          const { setBadgeCount } = await import('@/services/notifications');
+          const unreadResponse = await authFetch(API_ENDPOINTS.UNREAD_COUNT);
+          if (unreadResponse.ok) {
+            const unreadData = await unreadResponse.json();
+            await setBadgeCount(unreadData.unread_count || 0);
+          }
+        } catch (error) {
+          console.error('Error updating badge after marking as read:', error);
+        }
       }
     } catch (error) {
       console.error('Error loading messages:', error);

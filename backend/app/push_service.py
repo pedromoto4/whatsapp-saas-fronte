@@ -6,8 +6,9 @@ import httpx
 import os
 import logging
 from typing import List, Optional
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 
 from app.models import PushToken
 
@@ -131,6 +132,13 @@ async def send_push_to_user(
             )
             if success:
                 success_count += 1
+                # Update token's updated_at to mark it as recently used
+                await db.execute(
+                    update(PushToken)
+                    .where(PushToken.id == token_obj.id)
+                    .values(updated_at=datetime.utcnow())
+                )
+                await db.commit()
         
         logger.info(f"Sent push notifications to {success_count}/{len(tokens)} devices for user {user_id}")
         return success_count
@@ -169,4 +177,54 @@ async def send_new_message_notification(
     }
     
     return await send_push_to_user(db, user_id, title, body, data)
+
+async def cleanup_inactive_tokens(
+    db: AsyncSession,
+    days_inactive: int = 90
+) -> int:
+    """
+    Clean up inactive push tokens that haven't been updated in the specified number of days
+    
+    Args:
+        db: Database session
+        days_inactive: Number of days of inactivity before considering a token inactive
+    
+    Returns:
+        int: Number of tokens deactivated
+    """
+    try:
+        cutoff_date = datetime.utcnow() - timedelta(days=days_inactive)
+        
+        # Find tokens that are inactive (not updated recently) or already marked as inactive
+        result = await db.execute(
+            select(PushToken).where(
+                (PushToken.updated_at < cutoff_date) | (PushToken.is_active == False)
+            )
+        )
+        inactive_tokens = result.scalars().all()
+        
+        if not inactive_tokens:
+            logger.info("No inactive push tokens to clean up")
+            return 0
+        
+        # Deactivate tokens that are old but still marked as active
+        deactivated_count = 0
+        for token in inactive_tokens:
+            if token.is_active and token.updated_at < cutoff_date:
+                await db.execute(
+                    update(PushToken)
+                    .where(PushToken.id == token.id)
+                    .values(is_active=False)
+                )
+                deactivated_count += 1
+                logger.info(f"Deactivated inactive push token {token.id} (last updated: {token.updated_at})")
+        
+        await db.commit()
+        logger.info(f"Cleaned up {deactivated_count} inactive push tokens (older than {days_inactive} days)")
+        return deactivated_count
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error cleaning up inactive push tokens: {e}")
+        return 0
 

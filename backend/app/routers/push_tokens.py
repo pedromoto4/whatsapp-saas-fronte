@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from typing import List
+from datetime import datetime
 import logging
 
 from app.dependencies import get_current_user, get_db
@@ -55,7 +56,8 @@ async def register_push_token(
                     .values(
                         platform=token_data.platform,
                         device_name=token_data.device_name,
-                        is_active=True
+                        is_active=True,
+                        updated_at=datetime.utcnow()
                     )
                 )
             await db.commit()
