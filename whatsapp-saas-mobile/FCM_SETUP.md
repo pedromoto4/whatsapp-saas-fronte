@@ -65,7 +65,7 @@ Execute o seguinte comando no terminal (na pasta `whatsapp-saas-mobile`):
 
 ```bash
 cd whatsapp-saas-mobile
-npx expo push:android:upload --api-key AIzaSyChd73A0FMcli3dvDJM0DwthZWK3Cl03zk
+npx expo push:android:upload --api-key aaaaaaaaaaaaaaaaa...
 ```
 
 **Se der erro**, veja as alternativas abaixo.

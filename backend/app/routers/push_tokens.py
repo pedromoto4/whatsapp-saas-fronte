@@ -12,6 +12,7 @@ import logging
 from app.dependencies import get_current_user, get_db
 from app.models import User, PushToken
 from app.schemas import PushTokenCreate, PushTokenResponse
+from app.push_service import send_push_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -152,5 +153,41 @@ async def delete_push_token(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete push token: {str(e)}"
+        )
+
+@router.post("/test", status_code=status.HTTP_200_OK)
+async def test_push_notification(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send a test push notification to the current user's devices
+    """
+    try:
+        count = await send_push_to_user(
+            db=db,
+            user_id=current_user.id,
+            title="🧪 Notificação de Teste",
+            body="Se você recebeu esta notificação, o sistema está funcionando!",
+            data={"type": "test", "timestamp": datetime.utcnow().isoformat()}
+        )
+        
+        if count > 0:
+            return {
+                "success": True,
+                "message": f"Notificação de teste enviada para {count} dispositivo(s)",
+                "devices_notified": count
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Nenhum dispositivo ativo encontrado para enviar notificação",
+                "devices_notified": 0
+            }
+    except Exception as e:
+        logger.error(f"Error sending test notification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send test notification: {str(e)}"
         )
 
