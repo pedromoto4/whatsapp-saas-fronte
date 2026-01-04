@@ -30,7 +30,7 @@ try:
         from app.models import (
             User, Contact, Campaign, Message, FAQ, Catalog, 
             MessageLog, Template, ServiceType, RecurringAvailability,
-            AvailabilityException, Appointment, PushToken
+            AvailabilityException, Appointment, PushToken, Integration
         )
     except ImportError as model_error:
         # If some models fail to import, try importing them individually
@@ -45,7 +45,7 @@ try:
         optional_models = [
             'FAQ', 'Catalog', 'MessageLog', 'Template',
             'ServiceType', 'RecurringAvailability', 'AvailabilityException', 
-            'Appointment', 'PushToken'
+            'Appointment', 'PushToken', 'Integration'
         ]
         
         for model_name in optional_models:
