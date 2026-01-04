@@ -107,7 +107,10 @@ function RootLayoutNav() {
     
     // Set up notification listeners
     notificationListener.current = addNotificationReceivedListener(async (notification) => {
-      console.log('Notification received:', notification);
+      console.log('🔔 Notification received in app:', JSON.stringify(notification, null, 2));
+      console.log('🔔 Notification title:', notification.request.content.title);
+      console.log('🔔 Notification body:', notification.request.content.body);
+      console.log('🔔 Notification data:', notification.request.content.data);
       // Update badge count when notification is received
       await updateBadgeCount();
     });

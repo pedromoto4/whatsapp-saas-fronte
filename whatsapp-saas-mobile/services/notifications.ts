@@ -6,11 +6,14 @@ import { authFetch } from '@/lib/auth-store';
 
 // Configure how notifications are handled when the app is in the foreground
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    console.log('📱 Notification handler called:', notification.request.content.title);
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    };
+  },
 });
 
 /**

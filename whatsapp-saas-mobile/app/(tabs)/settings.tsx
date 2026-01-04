@@ -81,29 +81,41 @@ export default function SettingsPage() {
     try {
       const { authFetch } = await import('@/lib/auth-store');
       
+      console.log('🧪 Iniciando teste de notificação...');
       Alert.alert('Teste', 'Enviando notificação de teste...', [], { cancelable: false });
       
       const response = await authFetch('/api/push-tokens/test', {
         method: 'POST',
       });
 
+      console.log('📡 Resposta do servidor:', response.status, response.statusText);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Resposta de sucesso:', data);
         Alert.alert(
           '✅ Sucesso',
           data.message || `Notificação enviada para ${data.devices_notified} dispositivo(s)`,
           [{ text: 'OK' }]
         );
       } else {
-        const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
+        const errorText = await response.text();
+        console.error('❌ Erro na resposta:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { detail: errorText || 'Erro desconhecido' };
+        }
         Alert.alert(
           '❌ Erro',
-          errorData.detail || 'Falha ao enviar notificação de teste',
+          errorData.detail || `Falha ao enviar notificação de teste (${response.status})`,
           [{ text: 'OK' }]
         );
       }
     } catch (error: any) {
-      console.error('Error testing notification:', error);
+      console.error('❌ Erro ao testar notificação:', error);
+      console.error('Stack:', error.stack);
       Alert.alert(
         '❌ Erro',
         error.message || 'Falha ao enviar notificação de teste',
