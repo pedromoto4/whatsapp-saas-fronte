@@ -164,6 +164,9 @@ async def test_push_notification(
     Send a test push notification to the current user's devices
     """
     try:
+        logger.info(f"🧪 Test notification requested by user {current_user.id}")
+        print(f"🧪 Test notification requested by user {current_user.id}")  # Print always shows
+        
         count = await send_push_to_user(
             db=db,
             user_id=current_user.id,
@@ -171,6 +174,9 @@ async def test_push_notification(
             body="Se você recebeu esta notificação, o sistema está funcionando!",
             data={"type": "test", "timestamp": datetime.utcnow().isoformat()}
         )
+        
+        logger.info(f"🧪 Test notification result: {count} device(s) notified")
+        print(f"🧪 Test notification result: {count} device(s) notified")  # Print always shows
         
         if count > 0:
             return {

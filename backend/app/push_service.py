@@ -35,10 +35,10 @@ async def send_push_notification(
         bool: True if sent successfully, False otherwise
     """
     try:
-        # Log the notification attempt
-        logger.info(f"📤 Sending push notification to token: {token[:30]}...")
-        logger.info(f"   Title: {title}")
-        logger.info(f"   Body: {body[:50]}...")
+        # Log the notification attempt (using both logger and print for visibility)
+        log_msg = f"📤 Sending push notification to token: {token[:30]}... | Title: {title} | Body: {body[:50]}..."
+        logger.info(log_msg)
+        print(log_msg)  # Print always shows in Railway logs
         # Expo Push API expects an array of messages
         message = {
             "to": token,
@@ -64,14 +64,16 @@ async def send_push_notification(
                 if result.get("data") and len(result["data"]) > 0:
                     message_result = result["data"][0]
                     if message_result.get("status") == "ok":
-                        logger.info(f"✅ Push notification sent successfully to {token[:30]}...")
-                        logger.info(f"   Receipt ID: {message_result.get('id', 'N/A')}")
+                        success_msg = f"✅ Push notification sent successfully to {token[:30]}... | Receipt ID: {message_result.get('id', 'N/A')}"
+                        logger.info(success_msg)
+                        print(success_msg)  # Print always shows in Railway logs
                         return True
                     else:
                         error_message = message_result.get("message", "Unknown error")
                         error_code = message_result.get("details", {}).get("error", "N/A")
-                        logger.warning(f"⚠️  Push notification failed: {error_message} (code: {error_code})")
-                        logger.warning(f"   Full result: {message_result}")
+                        error_msg = f"⚠️  Push notification failed: {error_message} (code: {error_code}) | Full result: {message_result}"
+                        logger.warning(error_msg)
+                        print(error_msg)  # Print always shows in Railway logs
                         return False
                 else:
                     logger.warning(f"⚠️  Push notification failed: {result}")
@@ -115,10 +117,14 @@ async def send_push_to_user(
         tokens = result.scalars().all()
         
         if not tokens:
-            logger.info(f"⚠️  No active push tokens found for user {user_id}")
+            msg = f"⚠️  No active push tokens found for user {user_id}"
+            logger.info(msg)
+            print(msg)  # Print always shows in Railway logs
             return 0
         
-        logger.info(f"📱 Found {len(tokens)} active push token(s) for user {user_id}")
+        msg = f"📱 Found {len(tokens)} active push token(s) for user {user_id}"
+        logger.info(msg)
+        print(msg)  # Print always shows in Railway logs
         
         # Send notification to all tokens
         success_count = 0
@@ -140,7 +146,9 @@ async def send_push_to_user(
                 )
                 await db.commit()
         
-        logger.info(f"Sent push notifications to {success_count}/{len(tokens)} devices for user {user_id}")
+        msg = f"📊 Sent push notifications to {success_count}/{len(tokens)} devices for user {user_id}"
+        logger.info(msg)
+        print(msg)  # Print always shows in Railway logs
         return success_count
         
     except Exception as e:
