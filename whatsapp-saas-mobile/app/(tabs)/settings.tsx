@@ -77,6 +77,41 @@ export default function SettingsPage() {
     setNotificationsEnabled(value);
   };
 
+  const handleTestNotification = async () => {
+    try {
+      const { authFetch } = await import('@/lib/auth-store');
+      
+      Alert.alert('Teste', 'Enviando notificação de teste...', [], { cancelable: false });
+      
+      const response = await authFetch('/api/push-tokens/test', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        Alert.alert(
+          '✅ Sucesso',
+          data.message || `Notificação enviada para ${data.devices_notified} dispositivo(s)`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Erro desconhecido' }));
+        Alert.alert(
+          '❌ Erro',
+          errorData.detail || 'Falha ao enviar notificação de teste',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Error testing notification:', error);
+      Alert.alert(
+        '❌ Erro',
+        error.message || 'Falha ao enviar notificação de teste',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   const settingsSections = [
     {
       title: 'Conta',
@@ -105,6 +140,12 @@ export default function SettingsPage() {
           isSwitch: true,
           value: notificationsEnabled,
           onToggle: handleNotificationsToggle,
+        },
+        {
+          icon: 'flash-outline',
+          label: 'Testar Notificação',
+          description: 'Enviar uma notificação de teste',
+          onPress: handleTestNotification,
         },
       ],
     },
