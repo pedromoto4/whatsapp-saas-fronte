@@ -187,10 +187,22 @@ async def send_message(
             }
             contact = await create_contact_from_webhook(db, contact_data)
         
-        # Send message via WhatsApp
+        # Get user's WhatsApp integration
+        from app.crud_integrations import get_integration_by_user_id
+        integration = await get_integration_by_user_id(db, current_user.id)
+        
+        if not integration or not integration.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+            )
+        
+        # Send message via WhatsApp using user's credentials
         response = await whatsapp_service.send_message(
             to=phone_number,
-            message=message_request.content
+            message=message_request.content,
+            access_token=integration.wa_access_token,
+            phone_number_id=integration.wa_phone_number_id
         )
         
         # Extract message ID from WhatsApp response
@@ -433,6 +445,16 @@ async def send_product(
                     print(f"[PRODUCT] ⚠️ Failed to test image URL accessibility: {str(url_test_error)} (but will try to send anyway)")
                     # Continue anyway - WhatsApp will try to download it
                 
+                # Get user's WhatsApp integration
+                from app.crud_integrations import get_integration_by_user_id
+                integration = await get_integration_by_user_id(db, current_user.id)
+                
+                if not integration or not integration.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+                    )
+                
                 # First: Try to send image without caption
                 try:
                     logger.info(f"[PRODUCT] Attempting to send image to {phone_number}, URL: {product.image_url}")
@@ -441,7 +463,9 @@ async def send_product(
                         to=phone_number,
                         media_url=product.image_url,
                         media_type="image",
-                        caption=""  # No caption - send image first
+                        caption="",  # No caption - send image first
+                        access_token=integration.wa_access_token,
+                        phone_number_id=integration.wa_phone_number_id
                     )
                     
                     logger.info(f"[PRODUCT] Image response received: {image_response}")
@@ -544,9 +568,22 @@ async def send_product(
             
             text_response = None
             try:
+                # Get user's WhatsApp integration (if not already got)
+                if 'integration' not in locals():
+                    from app.crud_integrations import get_integration_by_user_id
+                    integration = await get_integration_by_user_id(db, current_user.id)
+                    
+                    if not integration or not integration.is_active:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+                        )
+                
                 text_response = await whatsapp_service.send_message(
                     to=phone_number,
-                    message=description
+                    message=description,
+                    access_token=integration.wa_access_token,
+                    phone_number_id=integration.wa_phone_number_id
                 )
                 
                 logger.info(f"[PRODUCT] Text response received: {text_response}")
@@ -605,10 +642,22 @@ async def send_product(
             
         else:
             # If no image, send as text message only
+            # Get user's WhatsApp integration
+            from app.crud_integrations import get_integration_by_user_id
+            integration = await get_integration_by_user_id(db, current_user.id)
+            
+            if not integration or not integration.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+                )
+            
             try:
                 response = await whatsapp_service.send_message(
                     to=phone_number,
-                    message=description
+                    message=description,
+                    access_token=integration.wa_access_token,
+                    phone_number_id=integration.wa_phone_number_id
                 )
                 responses.append(response)
                 

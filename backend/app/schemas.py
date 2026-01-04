@@ -425,3 +425,22 @@ class PushTokenResponse(PushTokenBase):
     
     class Config:
         from_attributes = True
+
+# Integration Schemas
+class IntegrationCreate(BaseModel):
+    wa_phone_number_id: str
+    wa_access_token: str
+    wa_business_account_id: Optional[str] = None
+
+class IntegrationResponse(BaseModel):
+    id: int
+    user_id: int
+    wa_phone_number_id: str
+    wa_business_account_id: Optional[str] = None
+    is_active: bool
+    last_verified_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True

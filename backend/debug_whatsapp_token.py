@@ -57,9 +57,11 @@ async def debug_whatsapp_token():
             elif response.status_code == 401:
                 print("❌ Token is invalid or expired!")
                 print("🔧 Possible solutions:")
-                print("   1. Generate a new access token in Meta Developer Console")
-                print("   2. Check if token has expired")
-                print("   3. Verify token permissions")
+                print("   1. For PRODUCTION: Use System User Access Token (doesn't expire)")
+                print("      📖 See PRODUCTION-SETUP.md for instructions")
+                print("   2. For DEVELOPMENT: Generate a new access token in Meta Developer Console")
+                print("   3. Check if token has expired")
+                print("   4. Verify token permissions")
             else:
                 print(f"⚠️ Unexpected status: {response.status_code}")
                 print(f"Response: {response.text}")
@@ -140,11 +142,14 @@ async def debug_whatsapp_token():
     
     print("\n" + "=" * 50)
     print("🎯 Next Steps:")
-    print("1. If token is invalid (401), generate a new one in Meta Developer Console")
+    print("1. If token is invalid (401):")
+    print("   📖 For PRODUCTION: Configure System User Access Token (PRODUCTION-SETUP.md)")
+    print("   🔧 For DEVELOPMENT: Generate a new token in Meta Developer Console")
     print("2. Ensure token has 'whatsapp_business_messaging' permission")
     print("3. Check if your WhatsApp Business account is verified")
     print("4. Verify phone number is properly configured")
     print("5. Test with a real phone number that has opted in")
+    print("\n💡 Tip: System User Access Tokens don't expire and are recommended for production!")
 
 if __name__ == "__main__":
     asyncio.run(debug_whatsapp_token())

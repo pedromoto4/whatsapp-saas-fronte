@@ -28,7 +28,9 @@ class WhatsAppService:
         else:
             logger.info("WhatsApp service running in PRODUCTION MODE.")
     
-    async def send_message(self, to: str, message: str, message_type: str = "text") -> Dict[str, Any]:
+    async def send_message(self, to: str, message: str, message_type: str = "text", 
+                          access_token: Optional[str] = None, 
+                          phone_number_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Send a message via WhatsApp Business API
         
@@ -36,11 +38,17 @@ class WhatsAppService:
             to: Phone number in international format (e.g., +5511999999999)
             message: Message content
             message_type: Type of message (text, template, etc.)
+            access_token: Optional access token (if not provided, uses instance token)
+            phone_number_id: Optional phone number ID (if not provided, uses instance ID)
         
         Returns:
             Dict with API response
         """
-        if not self.access_token or not self.phone_number_id:
+        # Use provided credentials or fallback to instance variables
+        token = access_token or self.access_token
+        phone_id = phone_number_id or self.phone_number_id
+        
+        if not token or not phone_id:
             # Demo mode - return mock response
             return {
                 "messaging_product": "whatsapp",
@@ -57,10 +65,10 @@ class WhatsAppService:
         logger.info(f"Attempting to send message to: {normalized_to}")
         logger.info(f"Message content: {message[:50]}..." if len(message) > 50 else f"Message content: {message}")
         
-        url = f"{self.base_url}/{self.phone_number_id}/messages"
+        url = f"{self.base_url}/{phone_id}/messages"
         
         headers = {
-            "Authorization": f"Bearer {self.access_token}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
         
@@ -105,15 +113,34 @@ class WhatsAppService:
                     error_data = e.response.json()
                     error_message = error_data.get("error", {}).get("message", str(e))
                     error_code = error_data.get("error", {}).get("code", "unknown")
-                    logger.error(f"Error code: {error_code}, Message: {error_message}")
+                    error_subcode = error_data.get("error", {}).get("error_subcode")
+                    
+                    logger.error(f"Error code: {error_code}, Subcode: {error_subcode}, Message: {error_message}")
+                    
+                    # Detect token expiration/invalid token
+                    if e.response.status_code == 401 or error_code == 190:
+                        logger.error("⚠️ Token inválido ou expirado! Para produção, use System User Access Token.")
+                        logger.error("📖 Veja PRODUCTION-SETUP.md para configurar tokens de longa duração.")
+                        
                 except:
                     pass
+            
+            # Provide better error message for 401 errors
+            if hasattr(e, 'response') and e.response and e.response.status_code == 401:
+                raise Exception(
+                    "Token do WhatsApp inválido ou expirado. "
+                    "Para produção, configure System User Access Token (não expira). "
+                    "Veja PRODUCTION-SETUP.md para mais detalhes."
+                )
+            
             raise Exception(f"Failed to send WhatsApp message: {e}")
         except Exception as e:
             logger.error(f"Unexpected error sending message: {e}")
             raise Exception(f"Failed to send WhatsApp message: {e}")
 
-    async def send_media_message(self, to: str, media_url: str, media_type: str, caption: str = "") -> Dict[str, Any]:
+    async def send_media_message(self, to: str, media_url: str, media_type: str, caption: str = "",
+                                access_token: Optional[str] = None,
+                                phone_number_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Send a media message via WhatsApp Business API
         
@@ -122,11 +149,17 @@ class WhatsAppService:
             media_url: Public URL of the media file
             media_type: Type of media (image, document, video, audio)
             caption: Optional caption for the media
+            access_token: Optional access token (if not provided, uses instance token)
+            phone_number_id: Optional phone number ID (if not provided, uses instance ID)
         
         Returns:
             Dict with API response
         """
-        if not self.access_token or not self.phone_number_id:
+        # Use provided credentials or fallback to instance variables
+        token = access_token or self.access_token
+        phone_id = phone_number_id or self.phone_number_id
+        
+        if not token or not phone_id:
             # Demo mode - return mock response
             return {
                 "messaging_product": "whatsapp",
@@ -143,10 +176,10 @@ class WhatsAppService:
         logger.info(f"Attempting to send {media_type} to: {normalized_to}")
         logger.info(f"Media URL: {media_url}")
         
-        url = f"{self.base_url}/{self.phone_number_id}/messages"
+        url = f"{self.base_url}/{phone_id}/messages"
         
         headers = {
-            "Authorization": f"Bearer {self.access_token}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
         
@@ -367,14 +400,23 @@ class WhatsAppService:
             logger.error(f"WhatsApp template API error: {e}")
             raise Exception(f"Failed to send WhatsApp template: {e}")
     
-    async def get_message_templates(self) -> List[Dict[str, Any]]:
+    async def get_message_templates(self, access_token: Optional[str] = None,
+                                   business_account_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get approved message templates
+        
+        Args:
+            access_token: Optional access token (if not provided, uses instance token)
+            business_account_id: Optional business account ID (if not provided, uses env variable)
         
         Returns:
             List of approved templates
         """
-        if not self.access_token:
+        # Use provided credentials or fallback to instance variables
+        token = access_token or self.access_token
+        waba_id = business_account_id or os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
+        
+        if not token:
             # Demo mode - return mock templates
             return [
                 {
@@ -393,17 +435,14 @@ class WhatsAppService:
                 }
             ]
         
-        # Need to use the business account ID, not phone number ID
-        business_account_id = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
-        
-        if not business_account_id:
-            logger.error("WHATSAPP_BUSINESS_ACCOUNT_ID not configured")
+        if not waba_id:
+            logger.error("Business Account ID not configured")
             return []
         
-        url = f"{self.base_url}/{business_account_id}/message_templates"
+        url = f"{self.base_url}/{waba_id}/message_templates"
         
         headers = {
-            "Authorization": f"Bearer {self.access_token}"
+            "Authorization": f"Bearer {token}"
         }
         
         # Add query parameters

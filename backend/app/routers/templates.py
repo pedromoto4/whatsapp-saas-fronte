@@ -213,10 +213,22 @@ async def send_template_endpoint(
             }
             contact = await create_contact_from_webhook(db, contact_data)
         
-        # Send via WhatsApp
+        # Get user's WhatsApp integration
+        from app.crud_integrations import get_integration_by_user_id
+        integration = await get_integration_by_user_id(db, current_user.id)
+        
+        if not integration or not integration.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+            )
+        
+        # Send via WhatsApp using user's credentials
         response = await whatsapp_service.send_message(
             to=request.to,
-            message=full_message
+            message=full_message,
+            access_token=integration.wa_access_token,
+            phone_number_id=integration.wa_phone_number_id
         )
         
         # Extract message ID from WhatsApp response

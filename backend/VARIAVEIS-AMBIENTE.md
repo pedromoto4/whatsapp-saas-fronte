@@ -42,6 +42,10 @@ WHATSAPP_ACCESS_TOKEN=your_access_token
 - **Usado em**: `app/whatsapp_service.py`
 - **Descrição**: Token de acesso da API do WhatsApp Business
 - **Obrigatório**: ⚠️ Opcional (se não configurado, entra em modo DEMO)
+- **⚠️ Para Produção**: Use **System User Access Token** (não expira) em vez de tokens temporários
+  - Tokens temporários do Meta Developer Console expiram após algumas horas/dias
+  - System User Access Tokens funcionam indefinidamente até serem revogados manualmente
+  - 📖 **Veja `PRODUCTION-SETUP.md` para configurar tokens de produção**
 
 #### 3.2. Phone Number ID
 ```bash
@@ -75,6 +79,29 @@ WHATSAPP_DEMO_MODE=true
 - **Descrição**: Ativa/desativa modo demo (default: "true")
 - **Obrigatório**: ❌ Não (default: "true")
 - **Valores**: "true" ou "false"
+
+#### 3.6. OAuth da Meta (para integração por usuário)
+```bash
+META_APP_ID=your_meta_app_id
+META_APP_SECRET=your_meta_app_secret
+META_OAUTH_REDIRECT_URI=https://seu-dominio.com/api/integrations/oauth/callback
+```
+- **Usado em**: `app/routers/integrations.py`
+- **Descrição**: Credenciais OAuth da Meta para integração individual por usuário
+- **Obrigatório**: ⚠️ Opcional (necessário apenas se usar integração OAuth por usuário)
+- **META_APP_ID**: ID da sua Meta App (obtido no Meta Developer Console)
+- **META_APP_SECRET**: App Secret da sua Meta App (obtido no Meta Developer Console)
+- **META_OAUTH_REDIRECT_URI**: URL de callback OAuth (deve ser configurada no Meta Developer Console)
+- 📖 **Veja `WHATSAPP-OAUTH-SETUP.md` para configuração detalhada**
+
+#### 3.7. Frontend URL (para OAuth callback)
+```bash
+FRONTEND_URL=https://seu-dominio.com
+```
+- **Usado em**: `app/routers/integrations.py`
+- **Descrição**: URL do frontend (usado para redirecionamento após OAuth)
+- **Obrigatório**: ⚠️ Opcional (default: "http://localhost:5173")
+- **Nota**: Usado apenas se implementar integração OAuth por usuário
 
 ---
 
@@ -212,6 +239,7 @@ Use este checklist para verificar se você tem todas as variáveis necessárias 
 ## 📚 Documentação Adicional
 
 - **WhatsApp Setup**: Ver `WHATSAPP-SETUP.md`
+- **🚀 Configuração para Produção**: Ver `PRODUCTION-SETUP.md` (System User Access Tokens)
 - **Database Setup**: Ver `README.md`
 - **Railway Deployment**: Ver `RAILWAY-DEPLOYMENT.md`
 

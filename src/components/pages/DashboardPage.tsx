@@ -13,6 +13,7 @@ import ConversationsPage from '@/components/pages/ConversationsPage'
 import SettingsPage from '@/components/pages/SettingsPage'
 import AppointmentsPage from '@/components/pages/AppointmentsPage'
 import AvailabilityManagement from '@/components/pages/AvailabilityManagement'
+import WhatsAppIntegrationPage from '@/components/pages/WhatsAppIntegrationPage'
 import { 
   Circle, 
   ChartBar, 
@@ -28,10 +29,11 @@ import {
   FileText,
   ChatCircleText,
   Calendar,
-  Clock
+  Clock,
+  WhatsappLogo
 } from '@phosphor-icons/react'
 
-type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'conversations' | 'settings' | 'appointments' | 'availability' // 'templates' removed - in stand-by
+type DashboardSection = 'overview' | 'catalog' | 'api-test' | 'faqs' | 'contacts' | 'conversations' | 'settings' | 'appointments' | 'availability' | 'integration' // 'templates' removed - in stand-by
 
 export default function DashboardPage() {
   const { navigate } = useRouter()
@@ -136,6 +138,7 @@ export default function DashboardPage() {
     { id: 'availability' as const, label: 'Disponibilidade', icon: Clock },
     { id: 'faqs' as const, label: 'FAQs', icon: Question },
     { id: 'catalog' as const, label: 'Catálogo', icon: ShoppingCart },
+    { id: 'integration' as const, label: 'Integração WhatsApp', icon: WhatsappLogo },
     { id: 'settings' as const, label: 'Configurações', icon: Gear },
     { id: 'api-test' as const, label: 'Teste API', icon: Bug },
   ]
@@ -407,6 +410,9 @@ export default function DashboardPage() {
       
       case 'availability':
         return <AvailabilityManagement />
+      
+      case 'integration':
+        return <WhatsAppIntegrationPage />
       
       case 'settings':
         return <SettingsPage />

@@ -326,13 +326,25 @@ async def send_media_message(
             }
             contact = await create_contact_from_webhook(db, contact_data)
         
-        # Send media via WhatsApp
+        # Get user's WhatsApp integration
+        from app.crud_integrations import get_integration_by_user_id
+        integration = await get_integration_by_user_id(db, current_user.id)
+        
+        if not integration or not integration.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+            )
+        
+        # Send media via WhatsApp using user's credentials
         logger.info(f"Sending media to WhatsApp - to: {phone_number}, media_url: {media_url}, media_type: {media_type}")
         result = await whatsapp_service.send_media_message(
             to=phone_number,
             media_url=media_url,
             media_type=media_type,
-            caption=caption
+            caption=caption,
+            access_token=integration.wa_access_token,
+            phone_number_id=integration.wa_phone_number_id
         )
         logger.info(f"WhatsApp response: {result}")
         
@@ -381,6 +393,16 @@ async def send_whatsapp_message(
 ):
     """Send a message via WhatsApp Business API"""
     try:
+        # Get user's WhatsApp integration
+        from app.crud_integrations import get_integration_by_user_id
+        integration = await get_integration_by_user_id(db, current_user.id)
+        
+        if not integration or not integration.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="WhatsApp integration not configured. Please connect your WhatsApp account first."
+            )
+        
         # Find or create contact
         contact = await get_contact_by_phone(db, message_data.phone_number)
         if not contact:
@@ -392,10 +414,12 @@ async def send_whatsapp_message(
             }
             contact = await create_contact_from_webhook(db, contact_data)
         
-        # Send message via WhatsApp API
+        # Send message via WhatsApp API using user's credentials
         response = await whatsapp_service.send_message(
             to=message_data.phone_number,
-            message=message_data.content
+            message=message_data.content,
+            access_token=integration.wa_access_token,
+            phone_number_id=integration.wa_phone_number_id
         )
         
         # Extract message ID from WhatsApp response
@@ -507,6 +531,20 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         data = await request.json()
         logger.info(f"🔔 Webhook recebido: {data}")
         
+        # Extract phone_number_id from webhook payload to route to correct user
+        phone_number_id = None
+        try:
+            entry = data.get("entry", [])
+            if entry:
+                changes = entry[0].get("changes", [])
+                if changes:
+                    value = changes[0].get("value", {})
+                    metadata = value.get("metadata", {})
+                    phone_number_id = metadata.get("phone_number_id")
+                    logger.info(f"📱 Phone Number ID extraído do webhook: {phone_number_id}")
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao extrair phone_number_id: {e}")
+        
         # Process webhook data
         processed_data = await whatsapp_service.process_webhook(data)
         logger.info(f"📦 Dados processados: status={processed_data.get('status')}")
@@ -520,26 +558,39 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 logger.warning("⚠️ Nenhuma mensagem encontrada no webhook")
                 return {"status": "success", "detail": "No messages to process"}
             
-            # Get default owner_id - try to find first active user, or use env variable
-            from app.crud import get_user_by_id
-            default_owner_id = int(os.getenv("WHATSAPP_DEFAULT_OWNER_ID", "1"))
-            
-            # Verify user exists
-            default_user = await get_user_by_id(db, default_owner_id)
-            if not default_user:
-                # Try to get first active user
-                from sqlalchemy import select
-                from app.models import User
-                result = await db.execute(select(User).where(User.is_active == True).limit(1))
-                first_user = result.scalar_one_or_none()
-                if first_user:
-                    default_owner_id = first_user.id
-                    logger.info(f"✅ Usando primeiro usuário ativo como padrão: {default_owner_id}")
+            # Get owner_id from integration using phone_number_id
+            owner_id = None
+            if phone_number_id:
+                from app.crud_integrations import get_integration_by_phone_number_id
+                integration = await get_integration_by_phone_number_id(db, phone_number_id)
+                if integration:
+                    owner_id = integration.user_id
+                    logger.info(f"✅ Integração encontrada para phone_number_id={phone_number_id}, user_id={owner_id}")
                 else:
-                    logger.error(f"❌ Nenhum usuário ativo encontrado! Não é possível processar mensagens.")
-                    return {"status": "error", "detail": "No active users found"}
-            else:
-                logger.info(f"✅ Usando owner_id configurado: {default_owner_id} ({default_user.email})")
+                    logger.warning(f"⚠️ Nenhuma integração encontrada para phone_number_id={phone_number_id}")
+            
+            # Fallback to default behavior if no integration found
+            if not owner_id:
+                from app.crud import get_user_by_id
+                default_owner_id = int(os.getenv("WHATSAPP_DEFAULT_OWNER_ID", "1"))
+                
+                # Verify user exists
+                default_user = await get_user_by_id(db, default_owner_id)
+                if not default_user:
+                    # Try to get first active user
+                    from sqlalchemy import select
+                    from app.models import User
+                    result = await db.execute(select(User).where(User.is_active == True).limit(1))
+                    first_user = result.scalar_one_or_none()
+                    if first_user:
+                        owner_id = first_user.id
+                        logger.info(f"✅ Usando primeiro usuário ativo como padrão: {owner_id}")
+                    else:
+                        logger.error(f"❌ Nenhum usuário ativo encontrado! Não é possível processar mensagens.")
+                        return {"status": "error", "detail": "No active users found"}
+                else:
+                    owner_id = default_owner_id
+                    logger.info(f"✅ Usando owner_id configurado: {owner_id} ({default_user.email})")
             
             for msg in messages:
                 # Find or create contact
@@ -551,10 +602,10 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     contact_data = {
                         "phone_number": phone_number,
                         "name": phone_number,
-                        "owner_id": default_owner_id
+                        "owner_id": owner_id
                     }
                     contact = await create_contact_from_webhook(db, contact_data)
-                    logger.info(f"Created new contact {phone_number} for owner_id={default_owner_id}")
+                    logger.info(f"Created new contact {phone_number} for owner_id={owner_id}")
                 
                 # Handle text messages
                 if msg.get("type") == "text" and msg.get("text"):
