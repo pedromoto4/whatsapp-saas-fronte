@@ -10,6 +10,7 @@ import logging
 import os
 import httpx
 import uuid
+import asyncio
 from pathlib import Path
 import mimetypes
 import shutil
@@ -572,17 +573,25 @@ async def receive_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                     )
                     await create_message_log(db, log_data)
                     
-                    # Send push notification for new message
-                    try:
-                        await send_new_message_notification(
-                            db=db,
-                            user_id=contact.owner_id,
-                            contact_name=contact.name,
-                            phone_number=phone_number,
-                            message_preview=message_text
-                        )
-                    except Exception as push_error:
-                        logger.error(f"Error sending push notification: {push_error}")
+                    # Send push notification for new message (fire-and-forget, don't block processing)
+                    # Create a new database session for the background task
+                    async def send_notification_background():
+                        try:
+                            from app.database import SessionLocal
+                            async with SessionLocal() as notification_db:
+                                await send_new_message_notification(
+                                    db=notification_db,
+                                    user_id=contact.owner_id,
+                                    contact_name=contact.name,
+                                    phone_number=phone_number,
+                                    message_preview=message_text
+                                )
+                        except Exception as push_error:
+                            logger.error(f"Error sending push notification (background): {push_error}")
+                    
+                    # Start notification in background (don't await - fire and forget)
+                    asyncio.create_task(send_notification_background())
+                    logger.info(f"🔔 Push notification queued for {phone_number} (processing continues)")
                     
                     normalized_text = normalize_text(message_text, remove_accents=True, stem=True)
                     logger.info(f"Processing message for owner_id={contact.owner_id}, text='{normalized_text}'")
