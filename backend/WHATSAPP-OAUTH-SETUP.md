@@ -53,15 +53,33 @@ Com o OAuth Flow implementado, cada usuário da aplicação pode conectar sua pr
 
 ### 4. Configurar OAuth Redirect URI
 
+A localização pode variar. Tente uma das seguintes opções:
+
+**Opção A: Via Settings > Basic (Método Tradicional)**
 1. No painel do app, vá em **Settings** > **Basic**
-2. Role até **"Valid OAuth Redirect URIs"**
-3. Adicione a URL de callback:
+2. Role a página para baixo
+3. Procure por **"Valid OAuth Redirect URIs"** ou **"Client OAuth Settings"**
+4. Se não encontrar, tente a **Opção B** abaixo
+
+**Opção B: Via Products > Facebook Login (Recomendado)**
+1. No menu lateral esquerdo, procure por **"Products"** ou **"Produtos"**
+2. Clique em **"Facebook Login"** (se não estiver adicionado, clique em **"Set Up"** primeiro)
+3. Vá em **"Settings"** dentro do Facebook Login
+4. Procure por **"Valid OAuth Redirect URIs"** ou **"Client OAuth Settings"**
+5. Adicione a URL de callback:
    ```
    https://seu-dominio.com/api/integrations/oauth/callback
    ```
    - Para desenvolvimento local: `http://localhost:8000/api/integrations/oauth/callback`
    - Para produção: use sua URL de produção
-4. Clique em **"Save Changes"**
+6. Clique em **"Save Changes"** ou **"Salvar alterações"**
+
+**Opção C: Via Use Cases (Casos de Uso) - Interface Nova**
+1. No menu lateral, clique em **"Use Cases"** ou **"Casos de Uso"**
+2. Em **"Authentication and account creation"**, clique em **"Customize"** ou **"Personalizar"**
+3. Clique em **"Go to settings"** ou **"Ir para configurações"**
+4. Procure por **"Valid OAuth Redirect URIs"** na seção **"Client OAuth Settings"**
+5. Adicione a URL e salve
 
 ### 5. Configurar Website Platform (Opcional mas Recomendado)
 
