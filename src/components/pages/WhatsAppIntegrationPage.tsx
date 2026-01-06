@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { 
   CheckCircle, 
@@ -9,7 +11,10 @@ import {
   WarningCircle,
   ArrowRight,
   Trash,
-  Link as LinkIcon
+  Link as LinkIcon,
+  CaretRight,
+  CaretDown,
+  Info
 } from '@phosphor-icons/react'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -25,11 +30,45 @@ interface Integration {
   updated_at: string | null
 }
 
+interface OnboardingStep {
+  id: string
+  title: string
+  description: string
+  link?: string
+  linkText?: string
+  completed: boolean
+}
+
 export default function WhatsAppIntegrationPage() {
   const [integration, setIntegration] = useState<Integration | null>(null)
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([
+    {
+      id: 'business_manager',
+      title: 'Criar Meta Business Manager',
+      description: 'Crie uma conta gratuita no Meta Business Manager. É rápido e fácil!',
+      link: 'https://business.facebook.com',
+      linkText: 'Abrir Business Manager',
+      completed: false
+    },
+    {
+      id: 'waba',
+      title: 'Criar WhatsApp Business Account',
+      description: 'No Business Manager, crie uma WhatsApp Business Account (WABA).',
+      link: 'https://business.facebook.com/settings/whatsapp-accounts',
+      linkText: 'Criar WABA',
+      completed: false
+    },
+    {
+      id: 'phone_number',
+      title: 'Adicionar e Verificar Número',
+      description: 'Adicione seu número de telefone ao WABA e verifique-o (via SMS ou chamada).',
+      completed: false
+    }
+  ])
 
   const fetchIntegration = async () => {
     try {
@@ -250,43 +289,198 @@ export default function WhatsAppIntegrationPage() {
       </div>
 
       {!integration ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Conectar WhatsApp</CardTitle>
-            <CardDescription>
-              Conecte sua conta WhatsApp Business através do OAuth da Meta
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Como funciona:</h3>
-              <ol className="list-decimal list-inside space-y-2 text-blue-800">
-                <li>Clique em "Conectar WhatsApp"</li>
-                <li>Autorize a aplicação na Meta</li>
-                <li>Sua conta WhatsApp Business será conectada automaticamente</li>
-              </ol>
-            </div>
+        <>
+          {showOnboarding && (
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Info size={24} className="text-blue-600" />
+                      Configuração Inicial
+                    </CardTitle>
+                    <CardDescription className="mt-2">
+                      Antes de conectar, você precisa configurar sua conta WhatsApp Business na Meta. 
+                      Não se preocupe, vamos guiá-lo passo a passo! ⏱️ Leva apenas 5 minutos.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowOnboarding(false)}
+                  >
+                    Já tenho tudo configurado
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Progresso</span>
+                    <span className="font-medium">
+                      {onboardingSteps.filter(s => s.completed).length} de {onboardingSteps.length} passos
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(onboardingSteps.filter(s => s.completed).length / onboardingSteps.length) * 100} 
+                    className="h-2"
+                  />
+                </div>
 
-            <Button
-              onClick={handleConnect}
-              disabled={connecting}
-              className="w-full"
-              size="lg"
-            >
-              {connecting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Conectando...
-                </>
-              ) : (
-                <>
-                  <LinkIcon className="mr-2" size={20} />
-                  Conectar WhatsApp
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+                {/* Steps */}
+                <div className="space-y-3">
+                  {onboardingSteps.map((step, index) => (
+                    <div
+                      key={step.id}
+                      className={`border rounded-lg p-4 transition-all ${
+                        step.completed
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1">
+                          <Checkbox
+                            checked={step.completed}
+                            onCheckedChange={(checked) => {
+                              const newSteps = [...onboardingSteps]
+                              newSteps[index].completed = checked as boolean
+                              setOnboardingSteps(newSteps)
+                            }}
+                            className="border-2"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`font-semibold ${step.completed ? 'text-green-700' : 'text-gray-900'}`}>
+                              {index + 1}. {step.title}
+                            </span>
+                            {step.completed && (
+                              <CheckCircle size={20} className="text-green-600" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{step.description}</p>
+                          {step.link && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(step.link, '_blank')}
+                              className="mt-2"
+                            >
+                              <LinkIcon size={16} className="mr-2" />
+                              {step.linkText || 'Abrir Link'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Help Text */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Info size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-semibold mb-1">💡 Dica:</p>
+                      <p>
+                        Se você já tem WhatsApp Business no telemóvel, você ainda precisa criar um 
+                        <strong> WhatsApp Business Account (WABA)</strong> no Meta Business Manager. 
+                        São coisas diferentes - o WABA é necessário para usar a API do WhatsApp.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Connect Button - Only show when all steps completed or user skipped */}
+                <div className="pt-4 border-t">
+                  {onboardingSteps.every(s => s.completed) ? (
+                    <div className="space-y-3">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-sm text-green-800 font-medium flex items-center gap-2">
+                          <CheckCircle size={20} />
+                          Tudo pronto! Agora você pode conectar seu WhatsApp.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleConnect}
+                        disabled={connecting}
+                        className="w-full"
+                        size="lg"
+                      >
+                        {connecting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Conectando...
+                          </>
+                        ) : (
+                          <>
+                            <LinkIcon className="mr-2" size={20} />
+                            Conectar WhatsApp
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600 text-center">
+                        Complete os passos acima ou clique em "Já tenho tudo configurado" se já fez isso antes.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowOnboarding(false)}
+                        className="w-full"
+                      >
+                        Já tenho tudo configurado, conectar agora
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!showOnboarding && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Conectar WhatsApp</CardTitle>
+                <CardDescription>
+                  Conecte sua conta WhatsApp Business através do OAuth da Meta
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Como funciona:</h3>
+                  <ol className="list-decimal list-inside space-y-2 text-blue-800">
+                    <li>Clique em "Conectar WhatsApp"</li>
+                    <li>Autorize a aplicação na Meta</li>
+                    <li>Sua conta WhatsApp Business será conectada automaticamente</li>
+                  </ol>
+                </div>
+
+                <Button
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="w-full"
+                  size="lg"
+                >
+                  {connecting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Conectando...
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="mr-2" size={20} />
+                      Conectar WhatsApp
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
       ) : (
         <Card>
           <CardHeader>
