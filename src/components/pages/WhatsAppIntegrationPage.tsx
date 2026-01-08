@@ -70,11 +70,39 @@ export default function WhatsAppIntegrationPage() {
     }
   ])
 
-  const fetchIntegration = async () => {
+  const getAuthToken = async () => {
     try {
+      // Try to get fresh token from Firebase Auth if available
+      const { auth } = await import('@/lib/firebase')
+      
+      // Check if user is logged in
+      const currentUser = auth.currentUser
+      if (currentUser) {
+        // Get fresh token
+        const token = await currentUser.getIdToken(true) // Force refresh
+        localStorage.setItem('firebase_token', token)
+        return token
+      }
+      
+      // Fallback to stored token
       const token = localStorage.getItem('firebase_token')
       if (!token) {
-        toast.error('Não autenticado')
+        return null
+      }
+      return token
+    } catch (error) {
+      console.error('Error getting auth token:', error)
+      // Fallback to stored token
+      return localStorage.getItem('firebase_token')
+    }
+  }
+
+  const fetchIntegration = async () => {
+    try {
+      const token = await getAuthToken()
+      if (!token) {
+        setIntegration(null)
+        setLoading(false)
         return
       }
 
@@ -110,12 +138,48 @@ export default function WhatsAppIntegrationPage() {
     fetchIntegration()
   }, [])
 
+  const getAuthToken = async () => {
+    try {
+      // Try to get fresh token from Firebase Auth if available
+      const { auth } = await import('@/lib/firebase')
+      const { onAuthStateChanged } = await import('firebase/auth')
+      
+      // Check if user is logged in
+      const currentUser = auth.currentUser
+      if (currentUser) {
+        // Get fresh token
+        const token = await currentUser.getIdToken(true) // Force refresh
+        localStorage.setItem('firebase_token', token)
+        return token
+      }
+      
+      // Fallback to stored token
+      const token = localStorage.getItem('firebase_token')
+      if (!token) {
+        toast.error('Não autenticado. Por favor, faça login novamente.')
+        return null
+      }
+      return token
+    } catch (error) {
+      console.error('Error getting auth token:', error)
+      // Fallback to stored token
+      const token = localStorage.getItem('firebase_token')
+      if (!token) {
+        toast.error('Não autenticado. Por favor, faça login novamente.')
+        return null
+      }
+      return token
+    }
+  }
+
   const handleConnect = async () => {
     try {
       setConnecting(true)
-      const token = localStorage.getItem('firebase_token')
+      
+      // Get fresh token
+      const token = await getAuthToken()
       if (!token) {
-        toast.error('Não autenticado')
+        setConnecting(false)
         return
       }
 
@@ -128,6 +192,14 @@ export default function WhatsAppIntegrationPage() {
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired, try to refresh
+          toast.error('Sessão expirada. Por favor, faça login novamente.')
+          // Redirect to login
+          window.location.href = '/login'
+          setConnecting(false)
+          return
+        }
         const error = await response.json()
         throw new Error(error.detail || 'Falha ao iniciar conexão OAuth')
       }
@@ -207,9 +279,10 @@ export default function WhatsAppIntegrationPage() {
   const handleTest = async () => {
     try {
       setTesting(true)
-      const token = localStorage.getItem('firebase_token')
+      const token = await getAuthToken()
       if (!token) {
-        toast.error('Não autenticado')
+        toast.error('Não autenticado. Por favor, faça login novamente.')
+        setTesting(false)
         return
       }
 
@@ -242,9 +315,9 @@ export default function WhatsAppIntegrationPage() {
     }
 
     try {
-      const token = localStorage.getItem('firebase_token')
+      const token = await getAuthToken()
       if (!token) {
-        toast.error('Não autenticado')
+        toast.error('Não autenticado. Por favor, faça login novamente.')
         return
       }
 
