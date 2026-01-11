@@ -4,6 +4,8 @@ import LandingPage from '@/components/pages/LandingPage'
 import LoginPage from '@/components/pages/LoginPage'
 import PricingPage from '@/components/pages/PricingPage'
 import DashboardPage from '@/components/pages/DashboardPage'
+import PrivacyPolicyPage from '@/components/pages/PrivacyPolicyPage'
+import TermsOfServicePage from '@/components/pages/TermsOfServicePage'
 import { useRouter } from '@/hooks/use-router'
 import { useAuth } from '@/hooks/use-auth'
 import { useEffect } from 'react'
@@ -46,12 +48,16 @@ function App() {
         return <PricingPage />
       case '/dashboard':
         return <DashboardPage />
+      case '/privacy':
+        return <PrivacyPolicyPage />
+      case '/terms':
+        return <TermsOfServicePage />
       default:
         return <LandingPage />
     }
   }
 
-  const showNavbar = currentRoute !== '/login' && currentRoute !== '/dashboard'
+  const showNavbar = currentRoute !== '/login' && currentRoute !== '/dashboard' && currentRoute !== '/privacy' && currentRoute !== '/terms'
 
   return (
     <div className="min-h-screen bg-background">

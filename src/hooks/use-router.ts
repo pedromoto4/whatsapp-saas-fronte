@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export type Route = '/' | '/dashboard' | '/pricing' | '/login'
+export type Route = '/' | '/dashboard' | '/pricing' | '/login' | '/privacy' | '/terms'
 
 export function useRouter() {
   const [currentRoute, setCurrentRoute] = useState<Route>(() => {

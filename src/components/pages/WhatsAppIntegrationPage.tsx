@@ -36,6 +36,8 @@ interface OnboardingStep {
   description: string
   link?: string
   linkText?: string
+  image?: string // Caminho para screenshot/imagem
+  imageAlt?: string // Texto alternativo para a imagem
   completed: boolean
 }
 
@@ -52,20 +54,26 @@ export default function WhatsAppIntegrationPage() {
       description: 'Crie uma conta gratuita no Meta Business Manager. É rápido e fácil!',
       link: 'https://business.facebook.com',
       linkText: 'Abrir Business Manager',
+      image: '/images/onboarding/business-manager-setup.png',
+      imageAlt: 'Tela de criação do Meta Business Manager',
       completed: false
     },
     {
       id: 'waba',
       title: 'Criar WhatsApp Business Account',
-      description: 'No Business Manager, crie uma WhatsApp Business Account (WABA).',
+      description: 'No Business Manager, vá em Configurações > Contas > WhatsApp e clique em "Adicionar".',
       link: 'https://business.facebook.com/settings/whatsapp-accounts',
       linkText: 'Criar WABA',
+      image: '/images/onboarding/waba-creation.png',
+      imageAlt: 'Tela de criação da WhatsApp Business Account no Business Manager',
       completed: false
     },
     {
       id: 'phone_number',
       title: 'Adicionar e Verificar Número',
       description: 'Adicione seu número de telefone ao WABA e verifique-o (via SMS ou chamada).',
+      image: '/images/onboarding/phone-verification.png',
+      imageAlt: 'Tela de verificação de número de telefone',
       completed: false
     }
   ])
@@ -401,6 +409,22 @@ export default function WhatsAppIntegrationPage() {
                             )}
                           </div>
                           <p className="text-sm text-gray-600 mb-2">{step.description}</p>
+                          {step.image && (
+                            <div className="mt-3 mb-3 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 shadow-sm">
+                              <img
+                                src={step.image}
+                                alt={step.imageAlt || step.title}
+                                className="w-full h-auto"
+                                onError={(e) => {
+                                  // Se a imagem não existir, esconde o elemento
+                                  const parent = e.currentTarget.parentElement
+                                  if (parent) {
+                                    parent.style.display = 'none'
+                                  }
+                                }}
+                              />
+                            </div>
+                          )}
                           {step.link && (
                             <Button
                               variant="outline"

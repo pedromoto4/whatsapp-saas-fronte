@@ -100,6 +100,20 @@ A localização pode variar. Tente uma das seguintes opções:
 
 **Nota**: Para desenvolvimento, você pode usar o modo de desenvolvimento que não requer aprovação, mas apenas funciona com usuários de teste.
 
+### ⚠️ IMPORTANTE: Adicionar Usuários de Teste
+
+Se você ver a mensagem **"App não ativada: esta app não está acessível de momento"**, significa que o usuário precisa ser adicionado como testador na Meta App.
+
+**Como resolver:**
+1. Acesse: https://developers.facebook.com/apps/
+2. Selecione sua Meta App
+3. Vá em **Roles** (ou Settings > Roles)
+4. Clique em **"Add People"** ou **"Add Test Users"**
+5. Adicione o email do Facebook do usuário
+6. O usuário receberá um convite e poderá usar o OAuth
+
+📖 **Veja o guia completo em `ADICIONAR-USUARIOS-TESTE.md`**
+
 ### 7. Conectar WhatsApp Business Account
 
 1. No painel do app, vá em **WhatsApp** > **Getting Started**
